@@ -65,6 +65,7 @@ class AnalyzeHandler(BaseHTTPRequestHandler):
                 "compare_caste_flag": _truthy((query.get("caste") or ["true"])[0]),
                 "compare_populations_flag": _truthy((query.get("populations") or ["true"])[0]),
                 "compare_ancestry_flag": _truthy((query.get("ancestry") or ["true"])[0]),
+                "compare_haplogroups_flag": _truthy((query.get("haplogroups") or ["true"])[0]),
             }
             UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
             dest = UPLOAD_DIR / filename
@@ -88,6 +89,7 @@ class AnalyzeHandler(BaseHTTPRequestHandler):
                 "compare_caste_flag": _truthy(str(data.get("caste", True))),
                 "compare_populations_flag": _truthy(str(data.get("populations", True))),
                 "compare_ancestry_flag": _truthy(str(data.get("ancestry", True))),
+                "compare_haplogroups_flag": _truthy(str(data.get("haplogroups", True))),
             }
             payload = AnalysisService(default_settings()).analyze(path, filename=name, **flags).to_dict()
             self._json(200 if payload["ok"] else 400, payload)

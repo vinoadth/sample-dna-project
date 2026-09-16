@@ -167,13 +167,15 @@ CASTE_AADR_POPS: dict[str, tuple[str, ...]] = {
     "Cochin_Jew": ("Jew_Cochin",),
 }
 
+# Generic first; per-label notes are coverage caveats, not a preferred caste list.
+CASTE_GENERAL_NOTES: tuple[str, ...] = (
+    "Bars are the AADR HO community labels that exist in this file — not a ranked or complete caste list.",
+    "A title or subcaste may sit under a scored label. Example: Pillai is often a Vellalar title; "
+    "the HO VLR set is 9 samples, not every Vellalar subdivision.",
+)
+
 # Short UI notes: titles/subcastes often associated with a scored label.
-# These are naming conventions, not a claim that VLR "includes" every subdivision.
 CASTE_LABEL_NOTES: dict[str, str] = {
-    "Vellalar": (
-        "Vellalar (VLR, 9 Mondal samples): Pillai is often a Vellalar title, not its own HO panel. "
-        "This is not all Vellalar subdivisions (Gounder, Mudaliar, etc.)."
-    ),
     "Tamil": (
         "Tamil (STU): Sri Lankan Tamil in 1000 Genomes — a language/region label, not a Tamil Nadu jati."
     ),
@@ -182,6 +184,9 @@ CASTE_LABEL_NOTES: dict[str, str] = {
     ),
     "Telugu": (
         "Telugu (ITU): Indian Telugu in the UK (1000 Genomes), not a single caste."
+    ),
+    "Vellalar": (
+        "Vellalar (VLR): 9 Mondal samples. Not Gounder, Mudaliar, or every Pillai-using family."
     ),
     "Kapu": (
         "Kapu: Andhra community in AADR. Not Chettiyar / Nagarathar."
@@ -203,7 +208,7 @@ CASTE_LABEL_NOTES: dict[str, str] = {
 # Mentioned often, but no public HO bar.
 CASTE_MISSING_PANEL_NOTES: tuple[str, ...] = (
     "No public HO panel for Chettiyar / Nattukottai Chettiar, Vanniyar, or Parayar. "
-    "Do not read those names from the Vellalar, Mala, or Madiga bars.",
+    "Do not read a missing name from a nearby bar (Kapu is not Chettiyar; Mala/Madiga are not Parayar).",
 )
 
 # Named packs of AADR HO groups already in v66.p1 (no extra download).
@@ -274,6 +279,7 @@ class Settings:
     aadr_geno: Path = AADR_GENO
     aadr_ind: Path = AADR_IND
     aadr_snp: Path = AADR_SNP
+    aadr_anno: Path = AADR_ANNO
     hominin_dir: Path = HOMININ_DIR
     caste_dir: Path = CASTE_DIR
     cache_dir: Path = CACHE_DIR
@@ -283,6 +289,7 @@ class Settings:
     compare_caste: bool = True
     compare_populations: bool = True
     compare_ancestry: bool = True
+    compare_haplogroups: bool = True
     population_packs: tuple[str, ...] = DEFAULT_POPULATION_PACKS
     extra_pops: dict[str, tuple[str, ...]] = field(default_factory=dict)
     extra_caste_groups: dict[str, tuple[str, ...]] = field(default_factory=dict)
@@ -318,4 +325,5 @@ def default_settings() -> Settings:
         aadr_geno=Path(str(stem) + ".geno"),
         aadr_ind=Path(str(stem) + ".ind"),
         aadr_snp=Path(str(stem) + ".snp"),
+        aadr_anno=AADR_ANNO,
     )

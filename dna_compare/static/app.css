@@ -262,6 +262,64 @@ th {
   overflow-x: auto;
 }
 
+.hg-table th,
+.hg-table td {
+  white-space: nowrap;
+}
+
+.hg-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.hg-best {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+.hg-subhead {
+  margin: 28px 0 10px;
+  font-size: 1.15em;
+}
+
+.hg-glossary {
+  display: grid;
+  gap: 4px 16px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.hg-glossary div {
+  display: grid;
+  grid-template-columns: 7.5em 1fr;
+  gap: 8px;
+}
+
+.hg-glossary dt {
+  margin: 0;
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.hg-glossary dd {
+  margin: 0;
+}
+
+.hg-derived {
+  color: var(--ok);
+  font-weight: 600;
+}
+
+.hg-conflict,
+.hg-mismatch {
+  color: var(--bad);
+}
+
 .hidden {
   display: none;
 }

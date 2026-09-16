@@ -2,6 +2,8 @@
 
 **AADR v66.1 Human Origins** belongs in `data/references/aadr/` (`*.geno`, `*.ind`, `*.snp`, `*.anno`). That panel already includes ancient/modern Greek, Chinese, Iranian/Persian, Indian-caste, and archaic hominin samples. No extra download is required for those comparisons.
 
+The haplogroup tables use the AADR HO `*.anno`: ISOGG Y for males, and the published mtDNA column when it is filled in. This sample’s columns are scored from published backbone markers in the VCF (Y: `rs3908` = M17 and the usual M173 / M343 / M69 / M20 / M172 set; mt: rCRS / PhyloTree sites such as 10400T = M, 12705C = R, 12308G = U). One person has one Y haplogroup and one mt haplogroup; the percentages are AADR counts, not mixture weights. Many HO labels have no mt haplogroup in the `.anno` (dashes). A few do — for example Vellalar/`VLR`.
+
 Optional hominin extracts live in `data/references/hominin/`. Full MPI-EVA per-chromosome VCFs are 50–70 GB each and are not needed.
 
 ## Hominin (`data/references/hominin/`)
@@ -31,9 +33,9 @@ chrom	pos	ref	alt	archaic_allele	source
 
 ## Indian caste (`data/references/caste/`)
 
-AADR HO already has Brahmin, Yadava, Kapu, Mala, Madiga, Irula, Relli, Gujarati, Punjabi, Telugu (ITU), Tamil (STU / STU-1 / STU-2), **Vellalar (VLR)**, Bengali (BEB), Cochin Jew.
+AADR HO already has several South Asian community and 1000 Genomes labels, including Brahmin, Yadava, Kapu, Mala, Madiga, Irula, Relli, Gujarati, Punjabi, Telugu (ITU), Tamil (STU / STU-1 / STU-2), Vellalar (VLR), Bengali (BEB), and Cochin Jew. That list is whatever is in the HO file, not a preferred caste set.
 
-**Spelling / format check (Sep 2026):** public *genotype* files labeled Pillai, Chettiyar/Chettiar, or Vanniyar were not found. Those names show up in older STR/mtDNA papers, not in downloadable HO/VCF panels. Closest public SNP label is Mondal **Vellalar (`VLR`)** already inside AADR HO (Pillai is often a Vellalar title). Nakatsuka 2017 *did* genotype many other Tamil groups (Kallar, Nadar, Arunthathiyar, Gounder, Mudaliar, …) but those arrays are **author-request only**. GenomeAsia has Iyer / Iyangar / Irula / Kota / Toda / Paniya / Urban Chennai — **DAC login**, not a public VCF.
+**Spelling / format check (Sep 2026):** public *genotype* files labeled Pillai, Chettiyar/Chettiar, or Vanniyar were not found. Those names show up in older STR/mtDNA papers, not in downloadable HO/VCF panels. One nearby public SNP label is Mondal Vellalar (`VLR`) already inside AADR HO (Pillai is often a Vellalar title; VLR is 9 samples). Nakatsuka 2017 *did* genotype many other Tamil groups (Kallar, Nadar, Arunthathiyar, Gounder, Mudaliar, …) but those arrays are **author-request only**. GenomeAsia has Iyer / Iyangar / Irula / Kota / Toda / Paniya / Urban Chennai — **DAC login**, not a public VCF.
 
 Downloaded metadata (not genotypes) lives in `data/references/caste/`:
 
@@ -41,7 +43,7 @@ Downloaded metadata (not genotypes) lives in `data/references/caste/`:
 | --- | --- |
 | `nakatsuka2017_groups.xlsx` | Group names + IBD scores (bioRxiv 047035) |
 | `41586_2019_1793_MOESM3_ESM.xlsx` | GenomeAsia sample summary (IYE, IYA, IRU, …) |
-| `tamil_nadu_group_aliases.tsv` | Spelling crosswalk and what is usable now. The caste chart repeats the same caveats: Pillai is often a Vellalar title (VLR is 9 samples, not every subdivision); STU is not a TN jati; Iyer/Iyengar are not the HO Brahmin pair; Chettiyar, Vanniyar, and Parayar have no public HO bar and must not be read from Vellalar / Mala / Madiga / Kapu. |
+| `tamil_nadu_group_aliases.tsv` | Spelling crosswalk and what is usable now. The caste chart notes that HO labels are incomplete: STU is not a TN jati; Iyer/Iyengar are not the HO Brahmin pair; a title may sit under a scored label (example: Pillai often under Vellalar/VLR, 9 samples); Chettiyar, Vanniyar, and Parayar have no public HO bar. |
 
 Do not download Mondal ENA BAMs (`PRJEB16019`): they are whole genomes, and the Vellalar subset is already in AADR as `VLR`.
 

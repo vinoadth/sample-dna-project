@@ -82,6 +82,80 @@ CasteEstimate = PopulationEstimate
 
 
 @dataclass
+class HaplogroupMarkerCall:
+    haplogroup: str
+    marker: str
+    rsid: str
+    chrom: str
+    pos: int
+    ancestral: str
+    derived: str
+    observed: str | None
+    status: str
+    genotype: str | None = None
+    backbone: bool = True
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class HaplogroupGroupCount:
+    n: int
+    n_called: int
+    percent: float | None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class HaplogroupRow:
+    haplogroup: str
+    marker: str
+    sample_status: str
+    groups: dict[str, HaplogroupGroupCount] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "haplogroup": self.haplogroup,
+            "marker": self.marker,
+            "sample_status": self.sample_status,
+            "groups": {name: item.to_dict() for name, item in self.groups.items()},
+        }
+
+
+@dataclass
+class HaplogroupResult:
+    available: bool
+    sample_best: str | None = None
+    markers: list[HaplogroupMarkerCall] = field(default_factory=list)
+    rows: list[HaplogroupRow] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+    mt_available: bool = False
+    mt_sample_best: str | None = None
+    mt_markers: list[HaplogroupMarkerCall] = field(default_factory=list)
+    mt_rows: list[HaplogroupRow] = field(default_factory=list)
+    mt_notes: list[str] = field(default_factory=list)
+    status_notes: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "available": self.available,
+            "sample_best": self.sample_best,
+            "markers": [item.to_dict() for item in self.markers],
+            "rows": [item.to_dict() for item in self.rows],
+            "notes": self.notes,
+            "mt_available": self.mt_available,
+            "mt_sample_best": self.mt_sample_best,
+            "mt_markers": [item.to_dict() for item in self.mt_markers],
+            "mt_rows": [item.to_dict() for item in self.mt_rows],
+            "mt_notes": self.mt_notes,
+            "status_notes": self.status_notes,
+        }
+
+
+@dataclass
 class ComparisonBlock:
     kind: str
     available: bool
@@ -110,6 +184,7 @@ class AnalysisResult:
     caste: ComparisonBlock
     populations: ComparisonBlock
     ancestry: ComparisonBlock
+    haplogroups: HaplogroupResult
     errors: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -121,5 +196,6 @@ class AnalysisResult:
             "caste": self.caste.to_dict(),
             "populations": self.populations.to_dict(),
             "ancestry": self.ancestry.to_dict(),
+            "haplogroups": self.haplogroups.to_dict(),
             "errors": self.errors,
         }

@@ -151,6 +151,9 @@ def _parse_open(handle: TextIO, *, filename: str, preview_limit: int) -> tuple[V
         n_file_samples = max(n_file_samples, row["n_samples"])
         if not row["is_snp"]:
             n_skip += 1
+            # Keep Y/MT indels (M17 is an insertion) for haplogroup scoring.
+            if row["chrom"] in {"Y", "MT"}:
+                index[(row["chrom"], row["pos"])] = row
             continue
         n_snps += 1
         chrom_counts[row["chrom"]] += 1

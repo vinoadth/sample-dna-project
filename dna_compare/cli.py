@@ -67,6 +67,7 @@ def build_parser() -> argparse.ArgumentParser:
     analyze.add_argument("--no-caste", action="store_true")
     analyze.add_argument("--no-populations", action="store_true")
     analyze.add_argument("--no-ancestry", action="store_true")
+    analyze.add_argument("--no-haplogroups", action="store_true")
     analyze.add_argument(
         "--groups",
         default="greek,chinese,persian,caste",
@@ -134,6 +135,7 @@ def main(argv: list[str] | None = None) -> int:
         compare_caste_flag=not args.no_caste,
         compare_populations_flag=not args.no_populations,
         compare_ancestry_flag=not args.no_ancestry,
+        compare_haplogroups_flag=not args.no_haplogroups,
     )
     payload = result.to_dict()
     if args.json:
@@ -185,6 +187,36 @@ def _print_human(payload: dict) -> None:
                     f"  {est['label']}: {est['percent']}%  "
                     f"method={est['method']}  snps={est['n_snps']}"
                 )
+    haplo = payload.get("haplogroups") or {}
+    print(f"\nhaplogroups  available={haplo.get('available')}  best={haplo.get('sample_best')}")
+    for note in haplo.get("notes") or []:
+        print(f"  note: {note}")
+    for row in haplo.get("rows") or []:
+        bits = []
+        for name, cell in (row.get("groups") or {}).items():
+            n_called = cell.get("n_called") or 0
+            if not n_called:
+                continue
+            pct = cell.get("percent")
+            extra = f" {pct:.0f}%" if pct is not None else ""
+            bits.append(f"{name} {cell.get('n')}/{n_called}{extra}")
+        print(f"  {row.get('haplogroup')} [{row.get('sample_status')}]: " + "; ".join(bits[:8]))
+    print(f"\nmtDNA haplogroups  available={haplo.get('mt_available')}  best={haplo.get('mt_sample_best')}")
+    for note in haplo.get("mt_notes") or []:
+        print(f"  note: {note}")
+    for row in haplo.get("mt_rows") or []:
+        bits = []
+        for name, cell in (row.get("groups") or {}).items():
+            n_called = cell.get("n_called") or 0
+            if not n_called:
+                continue
+            pct = cell.get("percent")
+            extra = f" {pct:.0f}%" if pct is not None else ""
+            bits.append(f"{name} {cell.get('n')}/{n_called}{extra}")
+        print(f"  {row.get('haplogroup')} [{row.get('sample_status')}]: " + "; ".join(bits[:8]))
+    print("\nhaplogroup status notes")
+    for note in haplo.get("status_notes") or []:
+        print(f"  note: {note}")
 
 
 if __name__ == "__main__":

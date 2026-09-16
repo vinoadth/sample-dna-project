@@ -113,6 +113,89 @@
     );
   }
 
+  function fmtHgCell(cell) {
+    if (!cell || !cell.n_called) return "—";
+    const n = Number(cell.n || 0);
+    const denom = Number(cell.n_called);
+    if (cell.percent === null || cell.percent === undefined) return n + "/" + denom;
+    return n + "/" + denom + " (" + Number(cell.percent).toFixed(0) + "%)";
+  }
+
+  const HG_STATUS_LABEL = {
+    derived: "derived (yes)",
+    ancestral: "ancestral (no)",
+    "no-call": "no-call (SNP missing)",
+    conflict: "conflict (ignore)",
+    het: "het (unclear)",
+    mismatch: "mismatch (unexpected allele)",
+  };
+
+  function hgGlossary() {
+    return (
+      '<dl class="hg-glossary">' +
+      "<div><dt>derived</dt><dd>yes — this file has the mutation that defines that haplogroup</dd></div>" +
+      "<div><dt>ancestral</dt><dd>no — this file has the older allele, so that haplogroup is ruled out</dd></div>" +
+      "<div><dt>no-call</dt><dd>that defining SNP is missing or unreadable in this VCF</dd></div>" +
+      "<div><dt>conflict</dt><dd>markers disagree (child looks yes, parent is no) — do not treat as a call</dd></div>" +
+      "</dl>"
+    );
+  }
+
+  function haploTable(block, kind) {
+    const label = kind === "mt" ? "mtDNA" : "Y";
+    const rows = (block && block.rows) || [];
+    const best = block && block.sample_best
+      ? '<p class="hg-best">Deepest derived ' +
+        label +
+        " marker in this VCF: <strong>" +
+        escapeHtml(block.sample_best) +
+        "</strong></p>"
+      : '<p class="hg-best">No derived backbone ' +
+        label +
+        " marker in this VCF (or calls conflict).</p>";
+    if (!rows.length) {
+      return best + '<p class="empty">No AADR haplogroup counts (need the .anno file).</p>';
+    }
+    const groups = Object.keys(rows[0].groups || {});
+    const head =
+      "<th>Haplogroup</th><th>Marker</th><th>This sample</th>" +
+      groups
+        .map(function (name) {
+          return "<th>" + escapeHtml(name) + "</th>";
+        })
+        .join("");
+    const body = rows
+      .map(function (row) {
+        const status = row.sample_status || "no-call";
+        return (
+          "<tr><td>" +
+          escapeHtml(row.haplogroup) +
+          "</td><td>" +
+          escapeHtml(row.marker || "—") +
+          '</td><td class="hg-' +
+          escapeHtml(status) +
+          '">' +
+          escapeHtml(HG_STATUS_LABEL[status] || status) +
+          "</td>" +
+          groups
+            .map(function (name) {
+              return '<td class="num">' + fmtHgCell((row.groups || {})[name]) + "</td>";
+            })
+            .join("") +
+          "</tr>"
+        );
+      })
+      .join("");
+    return (
+      best +
+      '<div class="table-wrap"><table class="hg-table"><thead><tr>' +
+      head +
+      "</tr></thead><tbody>" +
+      body +
+      "</tbody></table></div>"
+    );
+  }
+
   function notesList(notes) {
     if (!notes || !notes.length) return "";
     return (
@@ -186,6 +269,20 @@
       barRows((payload.ancestry && payload.ancestry.estimates) || [], "ancestry") +
       notesList(payload.ancestry && payload.ancestry.notes) +
       "</section>" +
+      '<section class="panel"><h2>Y haplogroups (R1a1 / M17 and others)</h2>' +
+      haploTable(payload.haplogroups || {}, "y") +
+      '<h2 class="hg-subhead">mtDNA haplogroups (M, R, U, and others)</h2>' +
+      haploTable(
+        {
+          sample_best: payload.haplogroups && payload.haplogroups.mt_sample_best,
+          rows: (payload.haplogroups && payload.haplogroups.mt_rows) || [],
+        },
+        "mt"
+      ) +
+      hgGlossary() +
+      notesList(payload.haplogroups && payload.haplogroups.notes) +
+      notesList(payload.haplogroups && payload.haplogroups.mt_notes) +
+      "</section>" +
       '<div class="grid-2">' +
       '<section class="panel"><h2>Population mixture weights</h2>' +
       barRows((payload.populations && payload.populations.estimates) || [], "") +
@@ -228,6 +325,7 @@
       caste: form.querySelector('[name="caste"]').checked,
       populations: form.querySelector('[name="populations"]').checked,
       ancestry: form.querySelector('[name="ancestry"]').checked,
+      haplogroups: !form.querySelector('[name="haplogroups"]') || form.querySelector('[name="haplogroups"]').checked,
     };
   }
 
@@ -260,6 +358,7 @@
             caste: String(flags.caste),
             populations: String(flags.populations),
             ancestry: String(flags.ancestry),
+            haplogroups: String(flags.haplogroups),
           }).toString(), {
             method: "POST",
             headers: { "X-Filename": file.name, "Content-Type": "application/octet-stream" },

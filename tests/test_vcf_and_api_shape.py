@@ -48,6 +48,12 @@ class VcfAndApiTests(unittest.TestCase):
         self.assertEqual(payload["caste"]["kind"], "caste")
         self.assertEqual(payload["populations"]["kind"], "populations")
         self.assertEqual(payload["ancestry"]["kind"], "ancestry")
+        self.assertIn("haplogroups", payload)
+        self.assertIn("markers", payload["haplogroups"])
+        self.assertIn("rows", payload["haplogroups"])
+        self.assertIn("mt_rows", payload["haplogroups"])
+        self.assertIn("mt_notes", payload["haplogroups"])
+        self.assertIn("status_notes", payload["haplogroups"])
 
     def test_ancestry_aadr_labels_exist(self):
         from dna_compare.config import ANCESTRY_AADR_POPS, ANCESTRY_RIGHT_POPS, default_settings
