@@ -15,61 +15,61 @@
     </nav>
     <main class="container-fluid px-3 px-xl-4 py-4">
       <div class="page-intro">
-      <p class="lead text-secondary">
-        Upload a SNP VCF or open a bundled sample. Mixture weights are from overlapping
-        AADR Human Origins SNPs — not ethnic identity.
-      </p>
-      <section class="card shadow-sm mb-4" id="live-controls">
-        <div class="card-body">
-          <form id="analyze-form">
-            <div class="row g-3">
-              <div class="col-md-6">
-                <label class="form-label" for="sample-select">Bundled sample</label>
-                <select class="form-select" id="sample-select" name="sample"></select>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label" for="vcf-file">Or upload VCF</label>
-                <input
-                  class="form-control"
-                  id="vcf-file"
-                  name="vcf"
-                  type="file"
-                  accept=".vcf,.vcf.gz,text/plain"
-                />
-              </div>
-            </div>
-            <fieldset class="mt-3">
-              <legend class="form-label fs-6">Comparisons</legend>
-              <div class="d-flex flex-wrap gap-3">
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" name="populations" id="cmp-populations" checked />
-                  <label class="form-check-label" for="cmp-populations">populations</label>
+        <p class="lead text-secondary">
+          Upload a SNP VCF or open a bundled sample. Mixture weights are from overlapping
+          AADR Human Origins SNPs — not ethnic identity.
+        </p>
+        <section class="card shadow-sm mb-4" id="live-controls">
+          <div class="card-body">
+            <form id="analyze-form">
+              <div class="row g-3 align-items-end">
+                <div class="col-lg-5">
+                  <label class="form-label" for="sample-select">Bundled sample</label>
+                  <select class="form-select" id="sample-select" name="sample"></select>
                 </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" name="caste" id="cmp-caste" checked />
-                  <label class="form-check-label" for="cmp-caste">caste</label>
+                <div class="col-lg-5">
+                  <label class="form-label" for="vcf-file">Or upload VCF</label>
+                  <input
+                    class="form-control"
+                    id="vcf-file"
+                    name="vcf"
+                    type="file"
+                    accept=".vcf,.vcf.gz,text/plain"
+                  />
                 </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" name="ancestry" id="cmp-ancestry" checked />
-                  <label class="form-check-label" for="cmp-ancestry">ancestry</label>
-                </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" name="hominin" id="cmp-hominin" checked />
-                  <label class="form-check-label" for="cmp-hominin">hominin</label>
-                </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" name="haplogroups" id="cmp-haplogroups" checked />
-                  <label class="form-check-label" for="cmp-haplogroups">haplogroups</label>
+                <div class="col-lg-2">
+                  <button type="submit" class="btn btn-primary w-100" id="run-btn">Analyze</button>
                 </div>
               </div>
-            </fieldset>
-            <div class="mt-3">
-              <button type="submit" class="btn btn-primary" id="run-btn">Analyze</button>
-            </div>
-            <p class="form-text text-secondary mb-0 mt-2" id="status"></p>
-          </form>
-        </div>
-      </section>
+              <fieldset class="mt-3">
+                <legend class="form-label fs-6">Comparisons</legend>
+                <div class="d-flex flex-wrap gap-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="populations" id="cmp-populations" checked />
+                    <label class="form-check-label" for="cmp-populations">populations</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="caste" id="cmp-caste" checked />
+                    <label class="form-check-label" for="cmp-caste">caste</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="ancestry" id="cmp-ancestry" checked />
+                    <label class="form-check-label" for="cmp-ancestry">ancestry</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="hominin" id="cmp-hominin" checked />
+                    <label class="form-check-label" for="cmp-hominin">hominin</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="haplogroups" id="cmp-haplogroups" checked />
+                    <label class="form-check-label" for="cmp-haplogroups">haplogroups</label>
+                  </div>
+                </div>
+              </fieldset>
+              <p class="form-text text-secondary mb-0 mt-2" id="status"></p>
+            </form>
+          </div>
+        </section>
       </div>
       <div id="results" class="results-wide d-none"></div>
     </main>

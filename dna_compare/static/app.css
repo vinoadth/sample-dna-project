@@ -1,5 +1,10 @@
-.page-intro {
-  max-width: 56rem;
+.page-intro,
+.page-intro .card {
+  width: 100%;
+}
+
+.page-intro .lead {
+  max-width: 72rem;
 }
 
 .results-wide {
