@@ -189,6 +189,15 @@ POPULATION_PACKS: dict[str, dict[str, tuple[str, ...]]] = {
     "caste": CASTE_AADR_POPS,
 }
 
+# Deep sources already in HO (Narasimhan-style South Asia model, not qpAdm).
+ANCESTRY_AADR_POPS: dict[str, tuple[str, ...]] = {
+    "Steppe_Yamnaya": ("Russia_Samara_EBA_Yamnaya",),
+    "Steppe_Sintashta": ("Russia_Chelyabinsk_MLBA_Sintashta",),
+    "Iran_Neolithic": ("Iran_GanjDareh_N",),
+    "Indus_Periphery": ("Iran_ShahriSokhta_BA1-1", "Iran_ShahriSokhta_BA2-2"),
+    "AASI_Onge": ("ONG",),
+}
+
 DEFAULT_POPULATION_PACKS = ("greek", "chinese", "persian", "caste")
 
 MAX_SAMPLES_PER_POP = 24
@@ -223,6 +232,7 @@ class Settings:
     compare_hominin: bool = True
     compare_caste: bool = True
     compare_populations: bool = True
+    compare_ancestry: bool = True
     population_packs: tuple[str, ...] = DEFAULT_POPULATION_PACKS
     extra_pops: dict[str, tuple[str, ...]] = field(default_factory=dict)
     extra_caste_groups: dict[str, tuple[str, ...]] = field(default_factory=dict)
@@ -231,6 +241,9 @@ class Settings:
         merged = dict(CASTE_AADR_POPS)
         merged.update(self.extra_caste_groups)
         return merged
+
+    def ancestry_groups(self) -> dict[str, tuple[str, ...]]:
+        return dict(ANCESTRY_AADR_POPS)
 
     def selected_population_groups(self) -> dict[str, tuple[str, ...]]:
         groups: dict[str, tuple[str, ...]] = {}

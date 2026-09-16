@@ -66,6 +66,7 @@ def build_parser() -> argparse.ArgumentParser:
     analyze.add_argument("--no-hominin", action="store_true")
     analyze.add_argument("--no-caste", action="store_true")
     analyze.add_argument("--no-populations", action="store_true")
+    analyze.add_argument("--no-ancestry", action="store_true")
     analyze.add_argument(
         "--groups",
         default="greek,chinese,persian,caste",
@@ -132,6 +133,7 @@ def main(argv: list[str] | None = None) -> int:
         compare_hominin_flag=not args.no_hominin,
         compare_caste_flag=not args.no_caste,
         compare_populations_flag=not args.no_populations,
+        compare_ancestry_flag=not args.no_ancestry,
     )
     payload = result.to_dict()
     if args.json:
@@ -167,7 +169,7 @@ def _print_human(payload: dict) -> None:
                     f"  {row['chrom']}:{row['pos']}  {row['rsid']}  "
                     f"{row['ref']}>{row['alt']}  GT={row['genotype']}"
                 )
-    for kind in ("hominin", "populations", "caste"):
+    for kind in ("hominin", "ancestry", "populations", "caste"):
         block = payload[kind]
         print(f"\n{kind} comparison  available={block['available']}")
         for note in block.get("notes") or []:

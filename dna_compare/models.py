@@ -109,6 +109,7 @@ class AnalysisResult:
     hominin: ComparisonBlock
     caste: ComparisonBlock
     populations: ComparisonBlock
+    ancestry: ComparisonBlock
     errors: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -119,5 +120,6 @@ class AnalysisResult:
             "hominin": self.hominin.to_dict(),
             "caste": self.caste.to_dict(),
             "populations": self.populations.to_dict(),
+            "ancestry": self.ancestry.to_dict(),
             "errors": self.errors,
         }

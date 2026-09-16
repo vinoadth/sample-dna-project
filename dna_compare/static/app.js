@@ -182,6 +182,10 @@
       (errors.length
         ? '<p class="status error">' + errors.map(escapeHtml).join(" · ") + "</p>"
         : "") +
+      '<section class="panel"><h2>Deep ancestry / Steppe</h2>' +
+      barRows((payload.ancestry && payload.ancestry.estimates) || [], "ancestry") +
+      notesList(payload.ancestry && payload.ancestry.notes) +
+      "</section>" +
       '<div class="grid-2">' +
       '<section class="panel"><h2>Population mixture weights</h2>' +
       barRows((payload.populations && payload.populations.estimates) || [], "") +
@@ -223,6 +227,7 @@
       hominin: form.querySelector('[name="hominin"]').checked,
       caste: form.querySelector('[name="caste"]').checked,
       populations: form.querySelector('[name="populations"]').checked,
+      ancestry: form.querySelector('[name="ancestry"]').checked,
     };
   }
 
@@ -254,6 +259,7 @@
             hominin: String(flags.hominin),
             caste: String(flags.caste),
             populations: String(flags.populations),
+            ancestry: String(flags.ancestry),
           }).toString(), {
             method: "POST",
             headers: { "X-Filename": file.name, "Content-Type": "application/octet-stream" },

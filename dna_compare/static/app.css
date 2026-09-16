@@ -217,6 +217,10 @@ h2 {
   background: #355c6b;
 }
 
+.fill.ancestry {
+  background: #5c4a2a;
+}
+
 .bar-row .pct {
   text-align: right;
   font-family: var(--mono);

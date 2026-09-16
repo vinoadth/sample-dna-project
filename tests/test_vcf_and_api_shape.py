@@ -36,6 +36,7 @@ class VcfAndApiTests(unittest.TestCase):
             compare_hominin_flag=False,
             compare_caste_flag=False,
             compare_populations_flag=False,
+            compare_ancestry_flag=False,
         )
         self.assertIsInstance(result, AnalysisResult)
         payload = result.to_dict()
@@ -45,6 +46,18 @@ class VcfAndApiTests(unittest.TestCase):
         self.assertEqual(payload["hominin"]["kind"], "hominin")
         self.assertEqual(payload["caste"]["kind"], "caste")
         self.assertEqual(payload["populations"]["kind"], "populations")
+        self.assertEqual(payload["ancestry"]["kind"], "ancestry")
+
+    def test_ancestry_aadr_labels_exist(self):
+        from dna_compare.config import ANCESTRY_AADR_POPS, default_settings
+        from dna_compare.eigenstrat import AadrPanel
+
+        panel = AadrPanel(default_settings())
+        if not panel.available:
+            self.skipTest("AADR HO panel not present")
+        present = {rec.population for rec in panel.inds()}
+        for label, pops in ANCESTRY_AADR_POPS.items():
+            self.assertTrue(any(pop in present for pop in pops), f"{label} missing {pops}")
 
 
 if __name__ == "__main__":
