@@ -2,6 +2,7 @@ import unittest
 from io import BytesIO
 from pathlib import Path
 
+from dna_compare.comparisons.caste import caste_alias_notes
 from dna_compare.models import AnalysisResult
 from dna_compare.service import AnalysisService
 from dna_compare.vcf_parser import parse_vcf
@@ -60,6 +61,17 @@ class VcfAndApiTests(unittest.TestCase):
             self.assertTrue(any(pop in present for pop in pops), f"{label} missing {pops}")
         for pop in ANCESTRY_RIGHT_POPS:
             self.assertIn(pop, present, f"outgroup {pop} missing")
+
+    def test_caste_alias_notes_include_pillai_and_missing_panels(self):
+        notes = caste_alias_notes()
+        joined = " ".join(notes)
+        self.assertTrue(any("Pillai" in note for note in notes))
+        self.assertIn("Vellalar", joined)
+        self.assertIn("not a Tamil Nadu jati", joined)
+        self.assertIn("Chettiyar", joined)
+        self.assertIn("Vanniyar", joined)
+        self.assertIn("Parayar", joined)
+        self.assertNotIn("includes all", joined.lower())
 
 
 if __name__ == "__main__":

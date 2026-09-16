@@ -167,6 +167,45 @@ CASTE_AADR_POPS: dict[str, tuple[str, ...]] = {
     "Cochin_Jew": ("Jew_Cochin",),
 }
 
+# Short UI notes: titles/subcastes often associated with a scored label.
+# These are naming conventions, not a claim that VLR "includes" every subdivision.
+CASTE_LABEL_NOTES: dict[str, str] = {
+    "Vellalar": (
+        "Vellalar (VLR, 9 Mondal samples): Pillai is often a Vellalar title, not its own HO panel. "
+        "This is not all Vellalar subdivisions (Gounder, Mudaliar, etc.)."
+    ),
+    "Tamil": (
+        "Tamil (STU): Sri Lankan Tamil in 1000 Genomes — a language/region label, not a Tamil Nadu jati."
+    ),
+    "Brahmin": (
+        "Brahmin: two HO samples only. Iyer / Iyengar are not this file."
+    ),
+    "Telugu": (
+        "Telugu (ITU): Indian Telugu in the UK (1000 Genomes), not a single caste."
+    ),
+    "Kapu": (
+        "Kapu: Andhra community in AADR. Not Chettiyar / Nagarathar."
+    ),
+    "Mala": (
+        "Mala: Andhra group in AADR. Not Pallar or Parayar."
+    ),
+    "Madiga": (
+        "Madiga: Andhra group in AADR. Not Pallar or Parayar."
+    ),
+    "Irula": (
+        "Irula: AADR tribal/community samples from South India (also GenomeAsia IRU, restricted)."
+    ),
+    "Gujarati": "Gujarati: 1000 Genomes GIH plus HO Gujarati A–D, not a single jati.",
+    "Punjabi": "Punjabi: 1000 Genomes PJL plus HO Punjabi.",
+    "Bengali": "Bengali: 1000 Genomes BEB.",
+}
+
+# Mentioned often, but no public HO bar.
+CASTE_MISSING_PANEL_NOTES: tuple[str, ...] = (
+    "No public HO panel for Chettiyar / Nattukottai Chettiar, Vanniyar, or Parayar. "
+    "Do not read those names from the Vellalar, Mala, or Madiga bars.",
+)
+
 # Named packs of AADR HO groups already in v66.p1 (no extra download).
 POPULATION_PACKS: dict[str, dict[str, tuple[str, ...]]] = {
     "greek": {

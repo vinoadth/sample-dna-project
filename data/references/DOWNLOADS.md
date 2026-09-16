@@ -41,7 +41,7 @@ Downloaded metadata (not genotypes) lives in `data/references/caste/`:
 | --- | --- |
 | `nakatsuka2017_groups.xlsx` | Group names + IBD scores (bioRxiv 047035) |
 | `41586_2019_1793_MOESM3_ESM.xlsx` | GenomeAsia sample summary (IYE, IYA, IRU, …) |
-| `tamil_nadu_group_aliases.tsv` | Spelling crosswalk and what is usable now |
+| `tamil_nadu_group_aliases.tsv` | Spelling crosswalk and what is usable now. The caste chart repeats the same caveats: Pillai is often a Vellalar title (VLR is 9 samples, not every subdivision); STU is not a TN jati; Iyer/Iyengar are not the HO Brahmin pair; Chettiyar, Vanniyar, and Parayar have no public HO bar and must not be read from Vellalar / Mala / Madiga / Kapu. |
 
 Do not download Mondal ENA BAMs (`PRJEB16019`): they are whole genomes, and the Vellalar subset is already in AADR as `VLR`.
 
