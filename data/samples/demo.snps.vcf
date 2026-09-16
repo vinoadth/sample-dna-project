@@ -1,0 +1,13 @@
+##fileformat=VCFv4.2
+##source=sample-dna-project-demo
+##INFO=<ID=NS,Number=1,Type=Integer,Description="Number of samples">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	DEMO1
+1	752566	rs3094315	G	A	.	PASS	.	GT	0/1
+1	842013	rs7419119	T	G	.	PASS	.	GT	0/0
+1	891021	rs13302957	G	A	.	PASS	.	GT	1/1
+1	903426	rs6696609	C	T	.	PASS	.	GT	0/1
+1	949654	rs8997	A	G	.	PASS	.	GT	0/0
+2	1000	indel_skip	AT	A	.	PASS	.	GT	0/1
+chr3	12345	.	C	T	.	PASS	.	GT	1/1
+X	2699624	rs123	A	G	.	PASS	.	GT	0/1

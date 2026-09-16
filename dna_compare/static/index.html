@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SNP comparison</title>
+    <link rel="stylesheet" href="/static/app.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <h1>SNP comparison</h1>
+        <p>
+          Upload a SNP VCF or open a bundled sample. Mixture weights are from overlapping
+          AADR Human Origins SNPs — not ethnic identity.
+        </p>
+      </header>
+      <section class="panel" id="live-controls">
+        <form class="controls" id="analyze-form">
+          <div class="row">
+            <label class="field">
+              <span>Bundled sample</span>
+              <select id="sample-select" name="sample"></select>
+            </label>
+            <label class="field">
+              <span>Or upload VCF</span>
+              <input id="vcf-file" name="vcf" type="file" accept=".vcf,.vcf.gz,text/plain" />
+            </label>
+          </div>
+          <fieldset class="checks">
+            <legend>Comparisons</legend>
+            <label><input type="checkbox" name="populations" checked /> populations</label>
+            <label><input type="checkbox" name="caste" checked /> caste</label>
+            <label><input type="checkbox" name="hominin" checked /> hominin</label>
+          </fieldset>
+          <div class="row">
+            <button type="submit" id="run-btn">Analyze</button>
+          </div>
+          <p class="status" id="status"></p>
+        </form>
+      </section>
+      <div id="results" class="hidden"></div>
+    </div>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
