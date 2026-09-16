@@ -6,6 +6,7 @@ from dna_compare.comparisons.haplogroups import (
     collapse_mt_haplogroup,
     collapse_y_haplogroup,
     compare_haplogroups,
+    marker_quality_note,
     score_mt_markers,
     score_y_markers,
 )
@@ -17,6 +18,13 @@ M17_CONFLICT_VCF = """##fileformat=VCFv4.2
 Y	15026424	rs2032624	A	C	.	PASS	.	GT	0
 Y	21733165	rs3908	D	I	.	PASS	.	GT	1
 Y	14969634	rs2032604	T	G	.	PASS	.	GT	0
+"""
+
+QUALITY_VCF = """##fileformat=VCFv4.2
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	TEST1
+Y	15026424	rs2032624	A	C	.	PASS	.	GT:GQ:IGC	0:5:0.65
+Y	21733165	rs3908	D	I	12	PASS	.	GT:GQ:DP	1:40:18
+Y	15581983	rs2032658	A	G	.	PASS	.	GT:GQ:IGC	1:9:0.86
 """
 
 R1A1_VCF = """##fileformat=VCFv4.2
@@ -111,6 +119,28 @@ MT	14766	rs3135031	C	T	.	PASS	.	GT	1
         if "Vellalar" in r_row.groups and r_row.groups["Vellalar"].n_called:
             self.assertEqual(r_row.groups["Vellalar"].n, 5)
             self.assertEqual(m_row.groups["Vellalar"].n, 4)
+
+    def test_marker_quality_from_gq_dp_igc(self):
+        _summary, index = parse_vcf(StringIO(QUALITY_VCF))
+        self.assertEqual(index[("Y", 15026424)]["gq"], 5)
+        self.assertAlmostEqual(index[("Y", 15026424)]["igc"], 0.65)
+        self.assertIsNone(index[("Y", 15026424)]["dp"])
+        self.assertEqual(index[("Y", 21733165)]["dp"], 18)
+        self.assertEqual(index[("Y", 21733165)]["gq"], 40)
+        self.assertEqual(index[("Y", 21733165)]["qual"], 12.0)
+        calls = {c.marker: c for c in score_y_markers(index)}
+        self.assertEqual(calls["M173"].gq, 5)
+        self.assertAlmostEqual(calls["M173"].igc, 0.65)
+        self.assertIsNone(calls["M173"].dp)
+        self.assertEqual(calls["M17"].dp, 18)
+        self.assertEqual(calls["M17"].gq, 40)
+        self.assertEqual(calls["M17"].qual, 12.0)
+        note = marker_quality_note(list(calls.values()), label="Y")
+        self.assertIn("median GQ", note)
+        self.assertIn("median DP", note)
+        self.assertIn("median IGC", note)
+        result = compare_haplogroups(index, settings=default_settings())
+        self.assertTrue(any("call support" in n for n in result.notes))
 
 
 if __name__ == "__main__":

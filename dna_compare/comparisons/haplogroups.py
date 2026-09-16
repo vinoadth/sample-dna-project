@@ -192,6 +192,50 @@ def _status(observed: str | None, ancestral: str, derived: str) -> str:
     return "mismatch"
 
 
+def _quality_from_row(row: dict | None) -> dict:
+    if not row:
+        return {}
+    return {
+        "qual": row.get("qual"),
+        "gq": row.get("gq"),
+        "dp": row.get("dp"),
+        "igc": row.get("igc"),
+        "ad": row.get("ad"),
+    }
+
+
+def _median(values: list[float]) -> float | None:
+    if not values:
+        return None
+    xs = sorted(values)
+    mid = len(xs) // 2
+    if len(xs) % 2:
+        return xs[mid]
+    return (xs[mid - 1] + xs[mid]) / 2.0
+
+
+def marker_quality_note(calls: list[HaplogroupMarkerCall], *, label: str) -> str:
+    used = [call for call in calls if call.status != "no-call"]
+    gqs = [float(call.gq) for call in used if call.gq is not None]
+    dps = [float(call.dp) for call in used if call.dp is not None]
+    igcs = [float(call.igc) for call in used if call.igc is not None]
+    if not used:
+        return f"No {label} marker was called, so there is no GQ or DP to show."
+    if not (gqs or dps or igcs):
+        return f"This VCF has genotype only on {label} markers (no GQ, DP, or IGC)."
+    parts: list[str] = []
+    if gqs:
+        parts.append(f"median GQ {_median(gqs):.0f}")
+    if dps:
+        parts.append(f"median DP {_median(dps):.0f}")
+    if igcs:
+        parts.append(f"median IGC {_median(igcs):.2f}")
+    extra = ""
+    if not dps:
+        extra = " No sequencing DP — typical of SNP-array files (GQ / IGC instead)."
+    return f"{label} call support: {', '.join(parts)}.{extra}"
+
+
 def score_markers(query_index: dict[tuple[str, int], dict], specs: tuple[dict, ...]) -> list[HaplogroupMarkerCall]:
     calls: list[HaplogroupMarkerCall] = []
     for spec in specs:
@@ -212,6 +256,7 @@ def score_markers(query_index: dict[tuple[str, int], dict], specs: tuple[dict, .
                 status=status,
                 genotype=None if row is None else str(row.get("genotype") or ""),
                 backbone=bool(spec.get("backbone", True)),
+                **_quality_from_row(row),
             )
         )
     return calls
@@ -531,12 +576,14 @@ def compare_haplogroups(
         notes.append(f"Deepest consistent derived marker in this file: {best}.")
     else:
         notes.append("No backbone Y marker is derived in this file (or derived calls conflict).")
+    notes.append(marker_quality_note(calls, label="Y"))
     if n_mt == 0:
         mt_notes.append("No chrMT SNPs in this VCF, so every mt marker is no-call.")
     elif mt_best:
         mt_notes.append(f"Deepest consistent derived mt marker in this file: {mt_best}.")
     else:
         mt_notes.append("No backbone mt marker is derived in this file (or calls conflict).")
+    mt_notes.append(marker_quality_note(mt_calls, label="mtDNA"))
 
     anno_path = settings.aadr_anno
     groups = settings.caste_groups()

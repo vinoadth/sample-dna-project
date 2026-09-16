@@ -20,6 +20,8 @@ class VcfAndApiTests(unittest.TestCase):
         self.assertIn(("3", 12345), index)
         self.assertEqual(index[("1", 752566)]["dosage_alt"], 1.0)
         self.assertEqual(index[("1", 891021)]["dosage_alt"], 2.0)
+        self.assertIsNone(index[("1", 752566)]["gq"])
+        self.assertIsNone(index[("1", 752566)]["dp"])
         self.assertEqual(summary.preview[0].rsid, "rs3094315")
 
     def test_parse_from_bytes_for_future_api_upload(self):
@@ -78,6 +80,28 @@ class VcfAndApiTests(unittest.TestCase):
         self.assertIn("Vanniyar", joined)
         self.assertIn("Parayar", joined)
         self.assertNotIn("includes all", joined.lower())
+
+    def test_bootstrap_is_vendored_for_offline_ui(self):
+        from dna_compare.report import STATIC_DIR, render_report_html
+        from dna_compare.web import _static_file
+
+        css = STATIC_DIR / "vendor" / "cerulean.min.css"
+        js = STATIC_DIR / "vendor" / "bootstrap.bundle.min.js"
+        self.assertTrue(css.is_file())
+        self.assertTrue(js.is_file())
+        head = css.read_bytes()[:120]
+        self.assertIn(b"Bootswatch", head)
+        self.assertIn(b"cerulean", head)
+        page = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+        self.assertIn("/static/vendor/cerulean.min.css", page)
+        self.assertIn("/static/vendor/bootstrap.bundle.min.js", page)
+        self.assertNotIn("cdn.", page.lower())
+        self.assertIsNotNone(_static_file("/static/vendor/cerulean.min.css"))
+        self.assertIsNone(_static_file("/static/../web.py"))
+        report = render_report_html({"ok": True, "source_filename": "demo.snps.vcf", "vcf": {}})
+        self.assertIn("cerulean", report)
+        self.assertIn("navbar", report)
+        self.assertIn("card", report)
 
 
 if __name__ == "__main__":

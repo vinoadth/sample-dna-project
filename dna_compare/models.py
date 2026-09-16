@@ -94,6 +94,11 @@ class HaplogroupMarkerCall:
     status: str
     genotype: str | None = None
     backbone: bool = True
+    qual: float | None = None
+    gq: int | None = None
+    dp: int | None = None
+    igc: float | None = None
+    ad: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

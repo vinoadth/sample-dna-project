@@ -22,7 +22,7 @@
         return item.percent !== null && item.percent !== undefined;
       })
       .slice(0, MAX_BARS);
-    if (!cleaned.length) return '<p class="empty">No estimates for this comparison.</p>';
+    if (!cleaned.length) return '<p class="text-secondary mb-0">No estimates for this comparison.</p>';
     const max = Math.max.apply(
       null,
       cleaned.map(function (item) {
@@ -30,26 +30,29 @@
       }).concat([1])
     );
     return (
-      '<div class="bars">' +
+      '<div class="d-grid gap-2">' +
       cleaned
         .map(function (item) {
           const width = Math.max(0, Math.min(100, (Math.abs(Number(item.percent)) / max) * 100));
           return (
-            '<div class="bar-row">' +
-            '<span class="name" title="' +
+            '<div class="row align-items-center g-2">' +
+            '<div class="col-4 col-md-3 text-truncate small" title="' +
             escapeHtml(item.name) +
             '">' +
             escapeHtml(item.name) +
-            "</span>" +
-            '<div class="track"><div class="fill ' +
+            "</div>" +
+            '<div class="col">' +
+            '<div class="progress" role="progressbar" aria-valuenow="' +
+            Math.round(width) +
+            '" aria-valuemin="0" aria-valuemax="100" style="height: 10px">' +
+            '<div class="progress-bar ' +
             className +
             '" style="width:' +
             width +
-            '%"></div></div>' +
-            '<span class="pct">' +
+            '%"></div></div></div>' +
+            '<div class="col-auto font-monospace small">' +
             fmtPct(item.percent) +
-            "</span>" +
-            "</div>"
+            "</div></div>"
           );
         })
         .join("") +
@@ -82,7 +85,7 @@
       .sort(function (a, b) {
         return chromOrder(a.chrom) - chromOrder(b.chrom);
       });
-    if (!entries.length) return '<p class="empty">No chromosome counts.</p>';
+    if (!entries.length) return '<p class="text-secondary mb-0">No chromosome counts.</p>';
     const max = Math.max.apply(
       null,
       entries.map(function (item) {
@@ -90,22 +93,25 @@
       })
     ) || 1;
     return (
-      '<div class="bars">' +
+      '<div class="d-grid gap-2">' +
       entries
         .map(function (item) {
           const width = (item.n / max) * 100;
           return (
-            '<div class="bar-row">' +
-            '<span class="name">chr ' +
+            '<div class="row align-items-center g-2">' +
+            '<div class="col-4 col-md-3 text-truncate small">chr ' +
             escapeHtml(item.chrom) +
-            "</span>" +
-            '<div class="track"><div class="fill" style="width:' +
+            "</div>" +
+            '<div class="col">' +
+            '<div class="progress" role="progressbar" aria-valuenow="' +
+            Math.round(width) +
+            '" aria-valuemin="0" aria-valuemax="100" style="height: 10px">' +
+            '<div class="progress-bar" style="width:' +
             width +
-            '%"></div></div>' +
-            '<span class="pct">' +
+            '%"></div></div></div>' +
+            '<div class="col-auto font-monospace small">' +
             item.n.toLocaleString() +
-            "</span>" +
-            "</div>"
+            "</div></div>"
           );
         })
         .join("") +
@@ -130,14 +136,81 @@
     mismatch: "mismatch (unexpected allele)",
   };
 
+  function hgStatusBadge(status) {
+    const label = HG_STATUS_LABEL[status] || status;
+    const cls = {
+      derived: "text-bg-success",
+      ancestral: "text-bg-secondary",
+      "no-call": "text-bg-light",
+      conflict: "text-bg-danger",
+      het: "text-bg-warning",
+      mismatch: "text-bg-danger",
+    }[status] || "text-bg-light";
+    return '<span class="badge ' + cls + '">' + escapeHtml(label) + "</span>";
+  }
+
   function hgGlossary() {
     return (
-      '<dl class="hg-glossary">' +
-      "<div><dt>derived</dt><dd>yes — this file has the mutation that defines that haplogroup</dd></div>" +
-      "<div><dt>ancestral</dt><dd>no — this file has the older allele, so that haplogroup is ruled out</dd></div>" +
-      "<div><dt>no-call</dt><dd>that defining SNP is missing or unreadable in this VCF</dd></div>" +
-      "<div><dt>conflict</dt><dd>markers disagree (child looks yes, parent is no) — do not treat as a call</dd></div>" +
+      '<dl class="row small mb-3 p-3 bg-body-secondary rounded border">' +
+      '<dt class="col-sm-2 font-monospace">derived</dt><dd class="col-sm-10">yes — this file has the mutation that defines that haplogroup</dd>' +
+      '<dt class="col-sm-2 font-monospace">ancestral</dt><dd class="col-sm-10">no — this file has the older allele, so that haplogroup is ruled out</dd>' +
+      '<dt class="col-sm-2 font-monospace">no-call</dt><dd class="col-sm-10">that defining SNP is missing or unreadable in this VCF</dd>' +
+      '<dt class="col-sm-2 font-monospace">conflict</dt><dd class="col-sm-10">markers disagree (child looks yes, parent is no) — do not treat as a call</dd>' +
+      '<dt class="col-sm-2 font-monospace">GQ</dt><dd class="col-sm-10">genotype quality from the VCF; higher is more confident (scale differs by file)</dd>' +
+      '<dt class="col-sm-2 font-monospace">DP</dt><dd class="col-sm-10">sequencing read depth at that site; usually missing on SNP-array files</dd>' +
+      '<dt class="col-sm-2 font-monospace">IGC</dt><dd class="col-sm-10">Illumina GenCall (0–1) on array VCFs; low IGC is weaker support</dd>' +
       "</dl>"
+    );
+  }
+
+  function fmtQc(value, digits) {
+    if (value === null || value === undefined || value === "") return "—";
+    if (typeof value === "number" && digits !== undefined) return value.toFixed(digits);
+    return String(value);
+  }
+
+  function markerQcTable(markers, label) {
+    if (!markers || !markers.length) return "";
+    const hasDp = markers.some(function (m) { return m.dp != null; });
+    const hasIgc = markers.some(function (m) { return m.igc != null; });
+    const hasGq = markers.some(function (m) { return m.gq != null; });
+    const hasQual = markers.some(function (m) { return m.qual != null; });
+    const head =
+      "<th>Haplogroup</th><th>Marker</th><th>This sample</th>" +
+      (hasGq ? "<th>GQ</th>" : "") +
+      (hasDp ? "<th>DP</th>" : "") +
+      (hasIgc ? "<th>IGC</th>" : "") +
+      (hasQual ? "<th>QUAL</th>" : "") +
+      (hasGq || hasDp || hasIgc || hasQual ? "" : "<th>quality</th>");
+    const body = markers
+      .map(function (row) {
+        const status = row.status || "no-call";
+        return (
+          "<tr><td>" +
+          escapeHtml(row.haplogroup) +
+          "</td><td>" +
+          escapeHtml(row.marker || "—") +
+          "</td><td>" +
+          hgStatusBadge(status) +
+          "</td>" +
+          (hasGq ? '<td class="num">' + fmtQc(row.gq) + "</td>" : "") +
+          (hasDp ? '<td class="num">' + fmtQc(row.dp) + "</td>" : "") +
+          (hasIgc ? '<td class="num">' + fmtQc(row.igc, 2) + "</td>" : "") +
+          (hasQual ? '<td class="num">' + fmtQc(row.qual) + "</td>" : "") +
+          (hasGq || hasDp || hasIgc || hasQual ? "" : '<td class="num">—</td>') +
+          "</tr>"
+        );
+      })
+      .join("");
+    return (
+      '<h3 class="h6 text-secondary mt-4">' +
+      escapeHtml(label) +
+      " marker quality</h3>" +
+      '<div class="table-responsive"><table class="table table-sm table-striped table-hover align-middle hg-table hg-qc-table"><thead><tr>' +
+      head +
+      "</tr></thead><tbody>" +
+      body +
+      "</tbody></table></div>"
     );
   }
 
@@ -145,16 +218,16 @@
     const label = kind === "mt" ? "mtDNA" : "Y";
     const rows = (block && block.rows) || [];
     const best = block && block.sample_best
-      ? '<p class="hg-best">Deepest derived ' +
+      ? '<p class="mb-3">Deepest derived ' +
         label +
         " marker in this VCF: <strong>" +
         escapeHtml(block.sample_best) +
         "</strong></p>"
-      : '<p class="hg-best">No derived backbone ' +
+      : '<p class="mb-3">No derived backbone ' +
         label +
         " marker in this VCF (or calls conflict).</p>";
     if (!rows.length) {
-      return best + '<p class="empty">No AADR haplogroup counts (need the .anno file).</p>';
+      return best + '<p class="text-secondary mb-0">No AADR haplogroup counts (need the .anno file).</p>';
     }
     const groups = Object.keys(rows[0].groups || {});
     const head =
@@ -172,10 +245,8 @@
           escapeHtml(row.haplogroup) +
           "</td><td>" +
           escapeHtml(row.marker || "—") +
-          '</td><td class="hg-' +
-          escapeHtml(status) +
-          '">' +
-          escapeHtml(HG_STATUS_LABEL[status] || status) +
+          "</td><td>" +
+          hgStatusBadge(status) +
           "</td>" +
           groups
             .map(function (name) {
@@ -188,7 +259,7 @@
       .join("");
     return (
       best +
-      '<div class="table-wrap"><table class="hg-table"><thead><tr>' +
+      '<div class="table-responsive"><table class="table table-sm table-striped table-hover align-middle hg-table"><thead><tr>' +
       head +
       "</tr></thead><tbody>" +
       body +
@@ -199,7 +270,7 @@
   function notesList(notes) {
     if (!notes || !notes.length) return "";
     return (
-      '<ul class="notes">' +
+      '<ul class="list-unstyled small text-secondary mb-0 mt-3">' +
       notes
         .map(function (note) {
           return "<li>" + escapeHtml(note) + "</li>";
@@ -210,7 +281,7 @@
   }
 
   function previewTable(rows) {
-    if (!rows || !rows.length) return '<p class="empty">No SNP preview rows.</p>';
+    if (!rows || !rows.length) return '<p class="text-secondary mb-0">No SNP preview rows.</p>';
     const body = rows
       .slice(0, 100)
       .map(function (row) {
@@ -232,7 +303,7 @@
       })
       .join("");
     return (
-      '<div class="table-wrap"><table><thead><tr>' +
+      '<div class="table-responsive"><table class="table table-sm table-striped table-hover align-middle"><thead><tr>' +
       "<th>chrom</th><th>pos</th><th>rsid</th><th>ref</th><th>alt</th><th>GT</th>" +
       "</tr></thead><tbody>" +
       body +
@@ -240,71 +311,96 @@
     );
   }
 
+  function card(title, body) {
+    return (
+      '<section class="card shadow-sm mb-3">' +
+      '<div class="card-header fw-semibold">' +
+      escapeHtml(title) +
+      "</div>" +
+      '<div class="card-body">' +
+      body +
+      "</div></section>"
+    );
+  }
+
+  function kpi(value, label, valueClass) {
+    return (
+      '<div class="col-6 col-md-3">' +
+      '<div class="card shadow-sm h-100"><div class="card-body py-3">' +
+      '<div class="fs-4 fw-semibold ' +
+      (valueClass || "") +
+      '">' +
+      value +
+      '</div><div class="text-secondary small">' +
+      label +
+      "</div></div></div></div>"
+    );
+  }
+
   function renderDashboard(root, payload) {
     const vcf = payload.vcf || {};
     const errors = payload.errors || [];
     root.innerHTML =
-      '<div class="kpis">' +
-      '<div class="kpi"><div class="n ' +
-      (payload.ok ? "ok" : "") +
-      '">' +
-      (payload.ok ? "ok" : "failed") +
-      '</div><div class="l">' +
-      escapeHtml(payload.source_filename || "") +
-      "</div></div>" +
-      '<div class="kpi"><div class="n">' +
-      escapeHtml(vcf.sample_id || "—") +
-      '</div><div class="l">sample</div></div>' +
-      '<div class="kpi"><div class="n">' +
-      Number(vcf.n_snps || 0).toLocaleString() +
-      '</div><div class="l">SNPs parsed</div></div>' +
-      '<div class="kpi"><div class="n">' +
-      Number(vcf.n_non_snp_skipped || 0).toLocaleString() +
-      '</div><div class="l">non-SNPs skipped</div></div>' +
+      '<div class="row g-3 mb-3">' +
+      kpi(
+        payload.ok ? "ok" : "failed",
+        escapeHtml(payload.source_filename || ""),
+        payload.ok ? "text-success" : "text-danger"
+      ) +
+      kpi(escapeHtml(vcf.sample_id || "—"), "sample") +
+      kpi(Number(vcf.n_snps || 0).toLocaleString(), "SNPs parsed") +
+      kpi(Number(vcf.n_non_snp_skipped || 0).toLocaleString(), "non-SNPs skipped") +
       "</div>" +
       (errors.length
-        ? '<p class="status error">' + errors.map(escapeHtml).join(" · ") + "</p>"
+        ? '<div class="alert alert-danger">' + errors.map(escapeHtml).join(" · ") + "</div>"
         : "") +
-      '<section class="panel"><h2>Deep ancestry (qpAdm-style 3-source)</h2>' +
-      barRows((payload.ancestry && payload.ancestry.estimates) || [], "ancestry") +
-      notesList(payload.ancestry && payload.ancestry.notes) +
-      "</section>" +
-      '<section class="panel"><h2>Y haplogroups (R1a1 / M17 and others)</h2>' +
-      haploTable(payload.haplogroups || {}, "y") +
-      '<h2 class="hg-subhead">mtDNA haplogroups (M, R, U, and others)</h2>' +
-      haploTable(
-        {
-          sample_best: payload.haplogroups && payload.haplogroups.mt_sample_best,
-          rows: (payload.haplogroups && payload.haplogroups.mt_rows) || [],
-        },
-        "mt"
+      card(
+        "Deep ancestry (qpAdm-style 3-source)",
+        barRows((payload.ancestry && payload.ancestry.estimates) || [], "ancestry") +
+          notesList(payload.ancestry && payload.ancestry.notes)
       ) +
-      hgGlossary() +
-      notesList(payload.haplogroups && payload.haplogroups.notes) +
-      notesList(payload.haplogroups && payload.haplogroups.mt_notes) +
-      "</section>" +
-      '<div class="grid-2">' +
-      '<section class="panel"><h2>Population mixture weights</h2>' +
-      barRows((payload.populations && payload.populations.estimates) || [], "") +
-      notesList(payload.populations && payload.populations.notes) +
-      "</section>" +
-      '<section class="panel"><h2>Caste / community weights</h2>' +
-      barRows((payload.caste && payload.caste.estimates) || [], "") +
-      notesList(payload.caste && payload.caste.notes) +
-      "</section>" +
-      "</div>" +
-      '<div class="grid-2">' +
-      '<section class="panel"><h2>Hominin comparison</h2>' +
-      barRows((payload.hominin && payload.hominin.estimates) || [], "hominin") +
-      notesList(payload.hominin && payload.hominin.notes) +
-      "</section>" +
-      '<section class="panel"><h2>SNPs by chromosome</h2>' +
-      chromBars(vcf.chrom_counts || {}) +
-      "</section>" +
-      "</div>" +
-      '<section class="panel"><h2>SNP preview</h2>' +
-      previewTable(vcf.preview || []) +
-      "</section>";
+      card(
+        "Y haplogroups (R1a1 / M17 and others)",
+        haploTable(payload.haplogroups || {}, "y") +
+          markerQcTable((payload.haplogroups && payload.haplogroups.markers) || [], "Y") +
+          '<h2 class="h5 mt-4">mtDNA haplogroups (M, R, U, and others)</h2>' +
+          haploTable(
+            {
+              sample_best: payload.haplogroups && payload.haplogroups.mt_sample_best,
+              rows: (payload.haplogroups && payload.haplogroups.mt_rows) || [],
+            },
+            "mt"
+          ) +
+          markerQcTable((payload.haplogroups && payload.haplogroups.mt_markers) || [], "mtDNA") +
+          hgGlossary() +
+          notesList(payload.haplogroups && payload.haplogroups.notes) +
+          notesList(payload.haplogroups && payload.haplogroups.mt_notes)
+      ) +
+      '<div class="row g-3">' +
+      '<div class="col-lg-6">' +
+      card(
+        "Population mixture weights",
+        barRows((payload.populations && payload.populations.estimates) || [], "") +
+          notesList(payload.populations && payload.populations.notes)
+      ) +
+      "</div><div class=\"col-lg-6\">" +
+      card(
+        "Caste / community weights",
+        barRows((payload.caste && payload.caste.estimates) || [], "") +
+          notesList(payload.caste && payload.caste.notes)
+      ) +
+      "</div></div>" +
+      '<div class="row g-3">' +
+      '<div class="col-lg-6">' +
+      card(
+        "Hominin comparison",
+        barRows((payload.hominin && payload.hominin.estimates) || [], "hominin") +
+          notesList(payload.hominin && payload.hominin.notes)
+      ) +
+      "</div><div class=\"col-lg-6\">" +
+      card("SNPs by chromosome", chromBars(vcf.chrom_counts || {})) +
+      "</div></div>" +
+      card("SNP preview", previewTable(vcf.preview || []));
   }
 
   async function loadSamples(select) {
@@ -346,7 +442,7 @@
       const sample = sampleSelect.value;
       const flags = flagsFromForm(form);
       runBtn.disabled = true;
-      status.className = "status";
+      status.className = "form-text text-secondary mb-0 mt-2";
       status.textContent =
         "Analyzing… the first comparison against AADR can take several minutes while frequency caches are built.";
       try {
@@ -371,7 +467,7 @@
             body: JSON.stringify(Object.assign({ filename: sample }, flags)),
           });
         } else {
-          status.className = "status error";
+          status.className = "alert alert-danger py-2 px-3 mt-2 mb-0";
           status.textContent = "Choose a bundled sample or upload a SNP VCF.";
           return;
         }
@@ -380,11 +476,11 @@
           throw new Error(payload.error || "Analyze failed");
         }
         renderDashboard(results, payload);
-        results.classList.remove("hidden");
+        results.classList.remove("d-none");
         status.textContent = payload.ok ? "Done." : "Finished with errors.";
-        if (!payload.ok) status.className = "status error";
+        if (!payload.ok) status.className = "alert alert-danger py-2 px-3 mt-2 mb-0";
       } catch (err) {
-        status.className = "status error";
+        status.className = "alert alert-danger py-2 px-3 mt-2 mb-0";
         status.textContent = err.message || String(err);
       } finally {
         runBtn.disabled = false;
@@ -395,9 +491,9 @@
   document.addEventListener("DOMContentLoaded", function () {
     const results = $("#results");
     if (window.ANALYSIS_PAYLOAD && results) {
-      $("#live-controls") && $("#live-controls").classList.add("hidden");
+      $("#live-controls") && $("#live-controls").classList.add("d-none");
       renderDashboard(results, window.ANALYSIS_PAYLOAD);
-      results.classList.remove("hidden");
+      results.classList.remove("d-none");
       return;
     }
     setupLive();

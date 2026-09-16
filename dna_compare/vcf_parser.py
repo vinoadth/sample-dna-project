@@ -56,6 +56,41 @@ def _parse_gt(gt: str) -> tuple[str, float | None]:
     return (token.replace("|", "/"), float(dosage))
 
 
+def _maybe_int(value: str | None) -> int | None:
+    if value in {None, "", "."}:
+        return None
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return None
+
+
+def _maybe_float(value: str | None) -> float | None:
+    if value in {None, "", "."}:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _format_fields(fmt: str, sample: str) -> dict[str, str]:
+    keys = fmt.split(":") if fmt and fmt != "." else []
+    vals = sample.split(":") if sample else []
+    return {key: vals[i] if i < len(vals) else "" for i, key in enumerate(keys)}
+
+
+def _sample_metrics(qual: str, fields: dict[str, str]) -> dict:
+    ad = fields.get("AD")
+    return {
+        "qual": _maybe_float(qual),
+        "gq": _maybe_int(fields.get("GQ")),
+        "dp": _maybe_int(fields.get("DP")),
+        "igc": _maybe_float(fields.get("IGC")),
+        "ad": None if ad in {None, "", "."} else ad,
+    }
+
+
 def iter_vcf_snps(handle: TextIO) -> tuple[list[str], Iterator[dict]]:
     samples: list[str] = []
 
@@ -79,6 +114,8 @@ def iter_vcf_snps(handle: TextIO) -> tuple[list[str], Iterator[dict]]:
             alt_primary = alt.split(",", 1)[0]
             gt_raw = cols[9] if len(cols) > 9 else "."
             gt, dosage = _parse_gt(gt_raw)
+            fields = _format_fields(cols[8] if len(cols) > 8 else "GT", gt_raw)
+            metrics = _sample_metrics(cols[5], fields)
             yield {
                 "chrom": normalize_chrom(cols[0]),
                 "pos": int(cols[1]),
@@ -90,6 +127,7 @@ def iter_vcf_snps(handle: TextIO) -> tuple[list[str], Iterator[dict]]:
                 "genotype": gt,
                 "dosage_alt": dosage,
                 "n_samples": max(0, len(cols) - 9),
+                **metrics,
             }
 
     return samples, _rows()

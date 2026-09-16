@@ -14,6 +14,7 @@ MIME = {
     ".html": "text/html; charset=utf-8",
     ".css": "text/css; charset=utf-8",
     ".js": "application/javascript; charset=utf-8",
+    ".txt": "text/plain; charset=utf-8",
 }
 
 
@@ -21,6 +22,17 @@ def _truthy(value: str | None, default: bool = True) -> bool:
     if value is None:
         return default
     return value.strip().lower() not in {"0", "false", "no", "off"}
+
+
+def _static_file(url_path: str) -> Path | None:
+    rel = url_path[len("/static/") :].lstrip("/")
+    if not rel or ".." in Path(rel).parts:
+        return None
+    path = (STATIC_DIR / rel).resolve()
+    root = STATIC_DIR.resolve()
+    if path.is_file() and (path == root or root in path.parents):
+        return path
+    return None
 
 
 class AnalyzeHandler(BaseHTTPRequestHandler):
@@ -35,9 +47,8 @@ class AnalyzeHandler(BaseHTTPRequestHandler):
             self._send_file(STATIC_DIR / "index.html")
             return
         if parsed.path.startswith("/static/"):
-            name = Path(parsed.path).name
-            path = STATIC_DIR / name
-            if path.is_file() and path.resolve().parent == STATIC_DIR.resolve():
+            path = _static_file(parsed.path)
+            if path is not None:
                 self._send_file(path)
                 return
             self._json(404, {"error": "not found"})
