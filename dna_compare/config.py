@@ -136,6 +136,19 @@ ARCHAIC_AADR_SAMPLES = {
 
 OUTGROUP_AADR_POPS = ("Mbuti", "Yoruba")
 
+# Right / outgroup pops for qpAdm-style ancestry (must not overlap sources).
+ANCESTRY_RIGHT_POPS: tuple[str, ...] = (
+    "Mbuti",
+    "Yoruba",
+    "Ju_hoan_North",
+    "Mandenka",
+    "French",
+    "Han",
+    "Papuan",
+    "Karitiana",
+    "Ulchi",
+)
+
 # Map display caste/community → AADR .ind population labels.
 CASTE_AADR_POPS: dict[str, tuple[str, ...]] = {
     "Brahmin": ("Brahmin",),
@@ -189,11 +202,9 @@ POPULATION_PACKS: dict[str, dict[str, tuple[str, ...]]] = {
     "caste": CASTE_AADR_POPS,
 }
 
-# Deep sources already in HO (Narasimhan-style South Asia model, not qpAdm).
+# 3-source South Asia model (Narasimhan-style left pops). One Steppe number.
 ANCESTRY_AADR_POPS: dict[str, tuple[str, ...]] = {
-    "Steppe_Yamnaya": ("Russia_Samara_EBA_Yamnaya",),
-    "Steppe_Sintashta": ("Russia_Chelyabinsk_MLBA_Sintashta",),
-    "Iran_Neolithic": ("Iran_GanjDareh_N",),
+    "Steppe_MLBA": ("Russia_Chelyabinsk_MLBA_Sintashta",),
     "Indus_Periphery": ("Iran_ShahriSokhta_BA1-1", "Iran_ShahriSokhta_BA2-2"),
     "AASI_Onge": ("ONG",),
 }
@@ -236,6 +247,7 @@ class Settings:
     population_packs: tuple[str, ...] = DEFAULT_POPULATION_PACKS
     extra_pops: dict[str, tuple[str, ...]] = field(default_factory=dict)
     extra_caste_groups: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    ancestry_right_pops: tuple[str, ...] = ANCESTRY_RIGHT_POPS
 
     def caste_groups(self) -> dict[str, tuple[str, ...]]:
         merged = dict(CASTE_AADR_POPS)

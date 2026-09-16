@@ -49,7 +49,7 @@ class VcfAndApiTests(unittest.TestCase):
         self.assertEqual(payload["ancestry"]["kind"], "ancestry")
 
     def test_ancestry_aadr_labels_exist(self):
-        from dna_compare.config import ANCESTRY_AADR_POPS, default_settings
+        from dna_compare.config import ANCESTRY_AADR_POPS, ANCESTRY_RIGHT_POPS, default_settings
         from dna_compare.eigenstrat import AadrPanel
 
         panel = AadrPanel(default_settings())
@@ -58,6 +58,8 @@ class VcfAndApiTests(unittest.TestCase):
         present = {rec.population for rec in panel.inds()}
         for label, pops in ANCESTRY_AADR_POPS.items():
             self.assertTrue(any(pop in present for pop in pops), f"{label} missing {pops}")
+        for pop in ANCESTRY_RIGHT_POPS:
+            self.assertIn(pop, present, f"outgroup {pop} missing")
 
 
 if __name__ == "__main__":

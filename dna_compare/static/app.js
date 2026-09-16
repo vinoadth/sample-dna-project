@@ -182,7 +182,7 @@
       (errors.length
         ? '<p class="status error">' + errors.map(escapeHtml).join(" · ") + "</p>"
         : "") +
-      '<section class="panel"><h2>Deep ancestry / Steppe</h2>' +
+      '<section class="panel"><h2>Deep ancestry (qpAdm-style 3-source)</h2>' +
       barRows((payload.ancestry && payload.ancestry.estimates) || [], "ancestry") +
       notesList(payload.ancestry && payload.ancestry.notes) +
       "</section>" +
