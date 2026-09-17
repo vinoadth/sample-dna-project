@@ -2,6 +2,7 @@ import unittest
 from io import StringIO
 
 from dna_compare.comparisons.haplogroups import (
+    _MT_SPECIFICITY,
     best_sample_haplogroup,
     collapse_mt_haplogroup,
     collapse_y_haplogroup,
@@ -38,9 +39,20 @@ Y	21733165	rs3908	D	I	.	PASS	.	GT	1
 class HaplogroupTests(unittest.TestCase):
     def test_collapse_r1a1_and_vellalar_style_labels(self):
         self.assertEqual(collapse_y_haplogroup("R1a1a1"), "R1a1 (M17)")
-        self.assertEqual(collapse_y_haplogroup("R1a1a1b2a2~"), "R1a1 (M17)")
-        self.assertEqual(collapse_y_haplogroup("L1a1b"), "L (M20)")
-        self.assertEqual(collapse_y_haplogroup("J2b2a2b1a~"), "J2 (M172)")
+        self.assertEqual(collapse_y_haplogroup("R1a1a1b2a2~"), "R1a-Z93")
+        self.assertEqual(collapse_y_haplogroup("L1a1b"), "L1 (M27)")
+        self.assertEqual(collapse_y_haplogroup("J2b2a2b1a~"), "J2b (M241)")
+        self.assertEqual(collapse_y_haplogroup("R2a"), "R2 (M124)")
+        self.assertEqual(collapse_y_haplogroup("R1a-Z93"), "R1a-Z93")
+        self.assertEqual(collapse_y_haplogroup("R1a1a1b2a"), "R1a-Z93")
+        self.assertEqual(collapse_y_haplogroup("LT"), "other")
+        self.assertEqual(collapse_y_haplogroup("T1a"), "T (M70)")
+        self.assertEqual(collapse_y_haplogroup("E1b1b"), "E (M96)")
+        self.assertEqual(collapse_y_haplogroup("H3b1a"), "H3b (Z13871)")
+        self.assertEqual(collapse_y_haplogroup("H-Z13871"), "H3b (Z13871)")
+        self.assertEqual(collapse_y_haplogroup("H3-Z5857"), "H3 (Z5857)")
+        self.assertEqual(collapse_y_haplogroup("H1a1a"), "H1 (M52)")
+        self.assertEqual(collapse_y_haplogroup("H-M69"), "H (M69)")
         self.assertIsNone(collapse_y_haplogroup("n/a (female)"))
         self.assertIsNone(collapse_y_haplogroup(".."))
 
@@ -95,6 +107,68 @@ MT	14766	rs3135031	C	T	.	PASS	.	GT	1
             "R8 (13215C)", "U (12308G)", "M (10400T)", "R (12705C)",
         )), "R (12705C)")
 
+    def test_mt_m4_derived_when_m_agrees(self):
+        vcf = """##fileformat=VCFv4.2
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	TEST1
+MT	10400	rs28358278	C	T	.	PASS	.	GT	1
+MT	12705	R	C	T	.	PASS	.	GT	1
+MT	6620	M4	T	C	.	PASS	.	GT	1
+MT	7271	M36	A	G	.	PASS	.	GT	0
+"""
+        _summary, index = parse_vcf(StringIO(vcf))
+        calls = {c.haplogroup: c for c in score_mt_markers(index)}
+        self.assertEqual(calls["M (10400T)"].status, "derived")
+        self.assertEqual(calls["R (12705C)"].status, "ancestral")
+        self.assertEqual(calls["M4 (6620C)"].status, "derived")
+        self.assertEqual(calls["M36 (7271G)"].status, "ancestral")
+        self.assertEqual(best_sample_haplogroup(list(calls.values()), _MT_SPECIFICITY), "M4 (6620C)")
+
+    def test_mt_m4_conflicts_when_m_ancestral(self):
+        vcf = """##fileformat=VCFv4.2
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	TEST1
+MT	10400	rs28358278	C	T	.	PASS	.	GT	0
+MT	6620	M4	T	C	.	PASS	.	GT	1
+"""
+        _summary, index = parse_vcf(StringIO(vcf))
+        calls = {c.haplogroup: c for c in score_mt_markers(index)}
+        self.assertEqual(calls["M (10400T)"].status, "ancestral")
+        self.assertEqual(calls["M4 (6620C)"].status, "conflict")
+        self.assertIsNone(best_sample_haplogroup(list(calls.values()), _MT_SPECIFICITY))
+
+    def test_mt_h3b_and_j_backbone_calls(self):
+        vcf = """##fileformat=VCFv4.2
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	TEST1
+MT	12705	R	C	T	.	PASS	.	GT	0
+MT	14766	rs3135031	C	T	.	PASS	.	GT	0
+MT	7028	H	C	T	.	PASS	.	GT	0
+MT	6776	H3	T	C	.	PASS	.	GT	1
+MT	2581	H3b	A	G	.	PASS	.	GT	1
+MT	16126	rs147029798	T	C	.	PASS	.	GT	0
+MT	16069	J	C	T	.	PASS	.	GT	0
+MT	14905	T	G	A	.	PASS	.	GT	0
+"""
+        _summary, index = parse_vcf(StringIO(vcf))
+        calls = {c.haplogroup: c for c in score_mt_markers(index)}
+        self.assertEqual(calls["H (7028C)"].status, "derived")
+        self.assertEqual(calls["H3 (6776C)"].status, "derived")
+        self.assertEqual(calls["H3b (2581G)"].status, "derived")
+        self.assertEqual(calls["JT (16126C)"].status, "ancestral")
+        self.assertEqual(calls["J (16069T)"].status, "ancestral")
+        self.assertEqual(best_sample_haplogroup(list(calls.values()), _MT_SPECIFICITY), "H3b (2581G)")
+
+    def test_mt_n1_conflicts_when_m_derived(self):
+        vcf = """##fileformat=VCFv4.2
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	TEST1
+MT	10400	rs28358278	C	T	.	PASS	.	GT	1
+MT	12705	R	C	T	.	PASS	.	GT	1
+MT	10238	N1	T	C	.	PASS	.	GT	1
+"""
+        _summary, index = parse_vcf(StringIO(vcf))
+        calls = {c.haplogroup: c for c in score_mt_markers(index)}
+        self.assertEqual(calls["M (10400T)"].status, "derived")
+        self.assertEqual(calls["N1 (10238C)"].status, "conflict")
+        self.assertEqual(best_sample_haplogroup(list(calls.values()), _MT_SPECIFICITY), "M (10400T)")
+
     def test_omit_y_table_when_vcf_has_no_chrY(self):
         vcf = """##fileformat=VCFv4.2
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	MOM1
@@ -133,6 +207,10 @@ MT	12705	R	C	T	.	PASS	.	GT	0
         labels = [row.haplogroup for row in result.mt_rows]
         self.assertIn("R (12705C)", labels)
         self.assertIn("M (10400T)", labels)
+        self.assertIn("M4 (6620C)", labels)
+        self.assertIn("M36 (7271G)", labels)
+        self.assertIn("H3 (6776C)", labels)
+        self.assertIn("U7 (5360T)", labels)
         r_row = next(row for row in result.mt_rows if row.haplogroup == "R (12705C)")
         m_row = next(row for row in result.mt_rows if row.haplogroup == "M (10400T)")
         called = [name for name, cell in r_row.groups.items() if cell.n_called]
@@ -177,6 +255,48 @@ Y	19571279	rs3908	D	I	.	PASS	.	GT	1
         self.assertEqual(calls["M173"].status, "derived")
         self.assertEqual(calls["M17"].status, "derived")
         self.assertEqual(best_sample_haplogroup(list(calls.values())), "R1a1 (M17)")
+
+    def test_h3b_derived_when_h_and_h3_agree(self):
+        vcf = """##fileformat=VCFv4.2
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	TEST1
+Y	21894058	rs2032673	T	C	.	PASS	.	GT	1
+Y	21753199	rs376769460	A	C	.	PASS	.	GT	0
+Y	2759285	rs569006329	C	G	.	PASS	.	GT	1
+Y	2878605	Z13871	T	G	.	PASS	.	GT	1
+"""
+        _summary, index = parse_vcf(StringIO(vcf))
+        calls = {c.marker: c for c in score_y_markers(index)}
+        self.assertEqual(calls["M69"].status, "derived")
+        self.assertEqual(calls["M52"].status, "ancestral")
+        self.assertEqual(calls["Z5857"].status, "derived")
+        self.assertEqual(calls["Z13871"].status, "derived")
+        self.assertEqual(best_sample_haplogroup(list(calls.values())), "H3b (Z13871)")
+
+    def test_h3b_conflicts_when_m69_ancestral(self):
+        vcf = """##fileformat=VCFv4.2
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	TEST1
+Y	21894058	rs2032673	T	C	.	PASS	.	GT	0
+Y	2878605	Z13871	T	G	.	PASS	.	GT	1
+"""
+        _summary, index = parse_vcf(StringIO(vcf))
+        calls = {c.marker: c for c in score_y_markers(index)}
+        self.assertEqual(calls["M69"].status, "ancestral")
+        self.assertEqual(calls["Z13871"].status, "conflict")
+        self.assertIsNone(best_sample_haplogroup(list(calls.values())))
+
+    def test_r2_and_j2b_backbone_calls(self):
+        vcf = """##fileformat=VCFv4.2
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	TEST1
+Y	15581983	rs2032658	A	G	.	PASS	.	GT	1
+Y	21764501	M124	G	A	.	PASS	.	GT	1
+Y	14969634	rs2032604	T	G	.	PASS	.	GT	1
+Y	15018459	M241	G	A	.	PASS	.	GT	1
+"""
+        _summary, index = parse_vcf(StringIO(vcf))
+        calls = {c.marker: c for c in score_y_markers(index)}
+        self.assertEqual(calls["M124"].status, "derived")
+        self.assertEqual(calls["M241"].status, "derived")
+        self.assertEqual(best_sample_haplogroup(list(calls.values())), "R2 (M124)")
 
     def test_marker_quality_from_gq_dp_igc(self):
         _summary, index = parse_vcf(StringIO(QUALITY_VCF))
