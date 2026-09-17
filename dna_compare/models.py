@@ -27,6 +27,14 @@ class VcfSummary:
     n_samples_in_file: int
     chrom_counts: dict[str, int] = field(default_factory=dict)
     preview: list[VariantRow] = field(default_factory=list)
+    reference: str | None = None
+    source: str | None = None
+    contig_lengths: dict[str, int] = field(default_factory=dict)
+    assembly: str = "unknown"
+    assembly_evidence: str = ""
+    lifted_to: str | None = None
+    n_lifted: int = 0
+    n_unmapped: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -37,6 +45,14 @@ class VcfSummary:
             "n_samples_in_file": self.n_samples_in_file,
             "chrom_counts": self.chrom_counts,
             "preview": [row.to_dict() for row in self.preview],
+            "reference": self.reference,
+            "source": self.source,
+            "contig_lengths": self.contig_lengths,
+            "assembly": self.assembly,
+            "assembly_evidence": self.assembly_evidence,
+            "lifted_to": self.lifted_to,
+            "n_lifted": self.n_lifted,
+            "n_unmapped": self.n_unmapped,
         }
 
 
@@ -161,6 +177,32 @@ class HaplogroupResult:
 
 
 @dataclass
+class RelatednessResult:
+    available: bool
+    other_filename: str | None = None
+    other_sample_id: str | None = None
+    query_sample_id: str | None = None
+    n_snps: int = 0
+    n_matched_pos: int = 0
+    n_matched_rsid: int = 0
+    n_qc_dropped: int = 0
+    n_pruned: int = 0
+    het_rate_query: float | None = None
+    het_rate_other: float | None = None
+    reliability: str | None = None
+    mean_ibs: float | None = None
+    kinship: float | None = None
+    ibs0: int = 0
+    ibs1: int = 0
+    ibs2: int = 0
+    relationship: str | None = None
+    notes: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
 class ComparisonBlock:
     kind: str
     available: bool
@@ -190,9 +232,14 @@ class AnalysisResult:
     populations: ComparisonBlock
     ancestry: ComparisonBlock
     haplogroups: HaplogroupResult
+    relatedness: RelatednessResult | None = None
     errors: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
+        relatedness = self.relatedness or RelatednessResult(
+            available=False,
+            notes=["No second VCF uploaded."],
+        )
         return {
             "ok": self.ok,
             "source_filename": self.source_filename,
@@ -202,5 +249,6 @@ class AnalysisResult:
             "populations": self.populations.to_dict(),
             "ancestry": self.ancestry.to_dict(),
             "haplogroups": self.haplogroups.to_dict(),
+            "relatedness": relatedness.to_dict(),
             "errors": self.errors,
         }

@@ -59,6 +59,12 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=False)
     analyze = sub.add_parser("analyze", help="Parse a VCF and open an HTML dashboard of the results")
     analyze.add_argument("vcf", type=Path)
+    analyze.add_argument(
+        "--other",
+        type=Path,
+        default=None,
+        help="Optional second SNP VCF (parent, cousin, friend, …) for a kinship / closeness estimate",
+    )
     analyze.add_argument("--json", action="store_true", help="Print the API-shaped JSON payload")
     analyze.add_argument("--text", action="store_true", help="Print a text summary instead of HTML")
     analyze.add_argument("--html", type=Path, default=None, help="Write the HTML report to this path")
@@ -79,6 +85,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Extra exact AADR group IDs, comma-separated (see list-pops)",
     )
     analyze.add_argument("--preview", type=int, default=None, help="How many SNPs to include for the HTML table")
+    analyze.add_argument(
+        "--assembly",
+        choices=("auto", "GRCh37", "GRCh38"),
+        default="auto",
+        help="Query VCF assembly. auto reads the header (GSA-24v3 / gtc2vcf defaults to GRCh38). "
+        "GRCh38 files are lifted to hg19 before AADR overlap.",
+    )
     sub.add_parser("list-references", help="Print reference layout")
     pops = sub.add_parser("list-pops", help="Search AADR population labels")
     pops.add_argument("query", nargs="?", default="")
@@ -117,6 +130,8 @@ def main(argv: list[str] | None = None) -> int:
     settings = default_settings()
     if args.preview is not None:
         settings.variant_preview_limit = args.preview
+    if args.assembly != "auto":
+        settings.assume_assembly = args.assembly
     packs = tuple(p.strip() for p in args.groups.split(",") if p.strip())
     if args.no_caste:
         packs = tuple(p for p in packs if p != "caste")
@@ -136,6 +151,8 @@ def main(argv: list[str] | None = None) -> int:
         compare_populations_flag=not args.no_populations,
         compare_ancestry_flag=not args.no_ancestry,
         compare_haplogroups_flag=not args.no_haplogroups,
+        other_source=args.other,
+        other_filename=None if args.other is None else args.other.name,
     )
     payload = result.to_dict()
     if args.json:
@@ -161,7 +178,9 @@ def _print_human(payload: dict) -> None:
     if vcf:
         print(
             f"Sample {vcf.get('sample_id')}  SNPs={vcf.get('n_snps')}  "
-            f"skipped_non_snp={vcf.get('n_non_snp_skipped')}"
+            f"skipped_non_snp={vcf.get('n_non_snp_skipped')}  "
+            f"assembly={vcf.get('assembly')}"
+            + (f"→{vcf.get('lifted_to')} lifted={vcf.get('n_lifted')}" if vcf.get("lifted_to") else "")
         )
         preview = vcf.get("preview") or []
         if preview:
@@ -187,36 +206,49 @@ def _print_human(payload: dict) -> None:
                     f"  {est['label']}: {est['percent']}%  "
                     f"method={est['method']}  snps={est['n_snps']}"
                 )
+    related = payload.get("relatedness") or {}
+    print(
+        f"\nrelatedness  available={related.get('available')}  "
+        f"other={related.get('other_filename')}  "
+        f"kinship={related.get('kinship')}  "
+        f"call={related.get('relationship')}  "
+        f"reliability={related.get('reliability')}"
+    )
+    for note in related.get("notes") or []:
+        print(f"  note: {note}")
     haplo = payload.get("haplogroups") or {}
     print(f"\nhaplogroups  available={haplo.get('available')}  best={haplo.get('sample_best')}")
     for note in haplo.get("notes") or []:
         print(f"  note: {note}")
-    for row in haplo.get("rows") or []:
-        bits = []
-        for name, cell in (row.get("groups") or {}).items():
-            n_called = cell.get("n_called") or 0
-            if not n_called:
-                continue
-            pct = cell.get("percent")
-            extra = f" {pct:.0f}%" if pct is not None else ""
-            bits.append(f"{name} {cell.get('n')}/{n_called}{extra}")
-        print(f"  {row.get('haplogroup')} [{row.get('sample_status')}]: " + "; ".join(bits[:8]))
+    if haplo.get("available"):
+        for row in haplo.get("rows") or []:
+            bits = []
+            for name, cell in (row.get("groups") or {}).items():
+                n_called = cell.get("n_called") or 0
+                if not n_called:
+                    continue
+                pct = cell.get("percent")
+                extra = f" {pct:.0f}%" if pct is not None else ""
+                bits.append(f"{name} {cell.get('n')}/{n_called}{extra}")
+            print(f"  {row.get('haplogroup')} [{row.get('sample_status')}]: " + "; ".join(bits[:8]))
     print(f"\nmtDNA haplogroups  available={haplo.get('mt_available')}  best={haplo.get('mt_sample_best')}")
     for note in haplo.get("mt_notes") or []:
         print(f"  note: {note}")
-    for row in haplo.get("mt_rows") or []:
-        bits = []
-        for name, cell in (row.get("groups") or {}).items():
-            n_called = cell.get("n_called") or 0
-            if not n_called:
-                continue
-            pct = cell.get("percent")
-            extra = f" {pct:.0f}%" if pct is not None else ""
-            bits.append(f"{name} {cell.get('n')}/{n_called}{extra}")
-        print(f"  {row.get('haplogroup')} [{row.get('sample_status')}]: " + "; ".join(bits[:8]))
-    print("\nhaplogroup status notes")
-    for note in haplo.get("status_notes") or []:
-        print(f"  note: {note}")
+    if haplo.get("mt_available"):
+        for row in haplo.get("mt_rows") or []:
+            bits = []
+            for name, cell in (row.get("groups") or {}).items():
+                n_called = cell.get("n_called") or 0
+                if not n_called:
+                    continue
+                pct = cell.get("percent")
+                extra = f" {pct:.0f}%" if pct is not None else ""
+                bits.append(f"{name} {cell.get('n')}/{n_called}{extra}")
+            print(f"  {row.get('haplogroup')} [{row.get('sample_status')}]: " + "; ".join(bits[:8]))
+    if haplo.get("status_notes"):
+        print("\nhaplogroup status notes")
+        for note in haplo.get("status_notes") or []:
+            print(f"  note: {note}")
 
 
 if __name__ == "__main__":

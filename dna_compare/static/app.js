@@ -214,6 +214,90 @@
     );
   }
 
+  function relatednessCard(block) {
+    if (!block || !block.available) {
+      const notes = notesList(block && block.notes);
+      return card(
+        "Relatedness (optional second VCF)",
+        '<p class="text-secondary mb-0">Upload a parent, relative, or any other SNP VCF to estimate how close the two files are.</p>' +
+          notes
+      );
+    }
+    const kinship = block.kinship == null ? "—" : Number(block.kinship).toFixed(3);
+    const ibs = block.mean_ibs == null ? "—" : Number(block.mean_ibs).toFixed(3);
+    const n = Number(block.n_snps || 0).toLocaleString();
+    const rel = block.reliability || "—";
+    const het =
+      (block.het_rate_query == null ? "—" : Number(block.het_rate_query).toFixed(2)) +
+      " / " +
+      (block.het_rate_other == null ? "—" : Number(block.het_rate_other).toFixed(2));
+    const matchBits = [];
+    if (block.n_matched_pos) matchBits.push(Number(block.n_matched_pos).toLocaleString() + " by position");
+    if (block.n_matched_rsid) matchBits.push(Number(block.n_matched_rsid).toLocaleString() + " by rsID");
+    const body =
+      '<p class="mb-3">Compared to <strong>' +
+      escapeHtml(block.other_sample_id || block.other_filename || "second file") +
+      "</strong></p>" +
+      '<p class="fs-5 mb-2">' +
+      escapeHtml(block.relationship || "unknown") +
+      "</p>" +
+      '<div class="row g-3 mb-2">' +
+      kpi(kinship, "KING kinship") +
+      kpi(ibs, "mean IBS") +
+      kpi(n, "overlapping autosomal SNPs") +
+      kpi(
+        Number(block.ibs0 || 0).toLocaleString() +
+          " / " +
+          Number(block.ibs1 || 0).toLocaleString() +
+          " / " +
+          Number(block.ibs2 || 0).toLocaleString(),
+        "IBS0 / IBS1 / IBS2"
+      ) +
+      "</div>" +
+      '<div class="row g-3 mb-2">' +
+      kpi(escapeHtml(rel), "call reliability") +
+      kpi(het, "het rate (query / other)") +
+      kpi(
+        matchBits.length ? matchBits.join(" · ") : "—",
+        "how SNPs were matched"
+      ) +
+      kpi(
+        Number(block.n_qc_dropped || 0).toLocaleString(),
+        "low-quality sites dropped"
+      ) +
+      "</div>" +
+      notesList(block.notes);
+    return card("Relatedness vs second VCF", body);
+  }
+
+  function haploCard(hg) {
+    const showY = !!hg.available;
+    const showMt = !!hg.mt_available;
+    if (!showY && !showMt) {
+      return card("Haplogroups", notesList(hg.notes) + notesList(hg.mt_notes));
+    }
+    const title = showY
+      ? "Y haplogroups (R1a1 / M17 and others)"
+      : "mtDNA haplogroups (M, R, U, and others)";
+    let body = "";
+    if (showY) {
+      body += haploTable(hg, "y");
+      body += markerQcTable(hg.markers || [], "Y");
+    }
+    if (showMt) {
+      if (showY) body += '<h2 class="h5 mt-4">mtDNA haplogroups (M, R, U, and others)</h2>';
+      body += haploTable(
+        { sample_best: hg.mt_sample_best, rows: hg.mt_rows || [] },
+        "mt"
+      );
+      body += markerQcTable(hg.mt_markers || [], "mtDNA");
+    }
+    if (showY || showMt) body += hgGlossary();
+    body += notesList(hg.notes);
+    body += notesList(hg.mt_notes);
+    return card(title, body);
+  }
+
   function haploTable(block, kind) {
     const label = kind === "mt" ? "mtDNA" : "Y";
     const rows = (block && block.rows) || [];
@@ -351,6 +435,20 @@
       kpi(Number(vcf.n_snps || 0).toLocaleString(), "SNPs parsed") +
       kpi(Number(vcf.n_non_snp_skipped || 0).toLocaleString(), "non-SNPs skipped") +
       "</div>" +
+      '<div class="row g-3 mb-3">' +
+      kpi(
+        escapeHtml(vcf.lifted_to ? (vcf.assembly || "?") + " → " + vcf.lifted_to : vcf.assembly || "unknown"),
+        vcf.lifted_to
+          ? "assembly (lifted for AADR/hg19)"
+          : "assembly",
+        vcf.lifted_to ? "text-success" : vcf.assembly === "GRCh38" ? "text-warning" : ""
+      ) +
+      kpi(Number(vcf.n_lifted || 0).toLocaleString(), "sites lifted") +
+      kpi(Number(vcf.n_unmapped || 0).toLocaleString(), "unmapped in liftover") +
+      "</div>" +
+      (vcf.assembly === "GRCh38" && !vcf.lifted_to
+        ? '<div class="alert alert-warning">This VCF looks like GRCh38 (often GSA-24v3 / gtc2vcf). Haplogroups still match by rsID and hg38 positions. Place hg38ToHg19.over.chain.gz under data/references/liftover/ so autosomal AADR sites line up.</div>'
+        : "") +
       (errors.length
         ? '<div class="alert alert-danger">' + errors.map(escapeHtml).join(" · ") + "</div>"
         : "") +
@@ -359,23 +457,8 @@
         barRows((payload.ancestry && payload.ancestry.estimates) || [], "ancestry") +
           notesList(payload.ancestry && payload.ancestry.notes)
       ) +
-      card(
-        "Y haplogroups (R1a1 / M17 and others)",
-        haploTable(payload.haplogroups || {}, "y") +
-          markerQcTable((payload.haplogroups && payload.haplogroups.markers) || [], "Y") +
-          '<h2 class="h5 mt-4">mtDNA haplogroups (M, R, U, and others)</h2>' +
-          haploTable(
-            {
-              sample_best: payload.haplogroups && payload.haplogroups.mt_sample_best,
-              rows: (payload.haplogroups && payload.haplogroups.mt_rows) || [],
-            },
-            "mt"
-          ) +
-          markerQcTable((payload.haplogroups && payload.haplogroups.mt_markers) || [], "mtDNA") +
-          hgGlossary() +
-          notesList(payload.haplogroups && payload.haplogroups.notes) +
-          notesList(payload.haplogroups && payload.haplogroups.mt_notes)
-      ) +
+      relatednessCard(payload.relatedness || {}) +
+      haploCard(payload.haplogroups || {}) +
       '<div class="row g-3">' +
       '<div class="col-lg-6">' +
       card(
@@ -403,10 +486,10 @@
       card("SNP preview", previewTable(vcf.preview || []));
   }
 
-  async function loadSamples(select) {
+  async function loadSamples(select, emptyLabel) {
     const res = await fetch("/api/samples");
     const data = await res.json();
-    select.innerHTML = '<option value="">Choose a bundled sample…</option>';
+    select.innerHTML = "<option value=\"\">" + (emptyLabel || "Choose a bundled sample…") + "</option>";
     (data.samples || []).forEach(function (name) {
       const opt = document.createElement("option");
       opt.value = name;
@@ -431,40 +514,55 @@
     const status = $("#status");
     const results = $("#results");
     const sampleSelect = $("#sample-select");
+    const otherSelect = $("#other-select");
     const runBtn = $("#run-btn");
-    loadSamples(sampleSelect).catch(function () {
+    Promise.all([
+      loadSamples(sampleSelect, "Choose a bundled sample…"),
+      otherSelect ? loadSamples(otherSelect, "None — skip relatedness") : Promise.resolve(),
+    ]).catch(function () {
       status.textContent = "Could not list bundled samples.";
     });
 
     form.addEventListener("submit", async function (event) {
       event.preventDefault();
       const fileInput = $("#vcf-file");
+      const otherInput = $("#other-file");
       const sample = sampleSelect.value;
+      const otherSample = otherSelect ? otherSelect.value : "";
       const flags = flagsFromForm(form);
+      const primaryFile = fileInput.files && fileInput.files[0];
+      const otherFile = otherInput && otherInput.files && otherInput.files[0];
       runBtn.disabled = true;
       status.className = "form-text text-secondary mb-0 mt-2";
       status.textContent =
         "Analyzing… the first comparison against AADR can take several minutes while frequency caches are built.";
       try {
         let res;
-        if (fileInput.files && fileInput.files[0]) {
-          const file = fileInput.files[0];
-          res = await fetch("/api/analyze?" + new URLSearchParams({
-            hominin: String(flags.hominin),
-            caste: String(flags.caste),
-            populations: String(flags.populations),
-            ancestry: String(flags.ancestry),
-            haplogroups: String(flags.haplogroups),
-          }).toString(), {
-            method: "POST",
-            headers: { "X-Filename": file.name, "Content-Type": "application/octet-stream" },
-            body: file,
-          });
+        if (primaryFile || otherFile) {
+          if (!primaryFile && !sample) {
+            status.className = "alert alert-danger py-2 px-3 mt-2 mb-0";
+            status.textContent = "Choose a bundled sample or upload a SNP VCF.";
+            return;
+          }
+          const fd = new FormData();
+          if (primaryFile) fd.append("vcf", primaryFile);
+          if (sample) fd.append("sample", sample);
+          if (otherFile) fd.append("other", otherFile);
+          if (otherSample) fd.append("other_sample", otherSample);
+          fd.append("hominin", String(flags.hominin));
+          fd.append("caste", String(flags.caste));
+          fd.append("populations", String(flags.populations));
+          fd.append("ancestry", String(flags.ancestry));
+          fd.append("haplogroups", String(flags.haplogroups));
+          res = await fetch("/api/analyze", { method: "POST", body: fd });
         } else if (sample) {
           res = await fetch("/api/analyze-sample", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(Object.assign({ filename: sample }, flags)),
+            body: JSON.stringify(Object.assign({
+              filename: sample,
+              other_filename: otherSample || "",
+            }, flags)),
           });
         } else {
           status.className = "alert alert-danger py-2 px-3 mt-2 mb-0";

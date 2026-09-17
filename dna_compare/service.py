@@ -9,11 +9,14 @@ from dna_compare.comparisons import (
     compare_haplogroups,
     compare_hominin,
     compare_populations,
+    compare_relatedness,
 )
+from dna_compare.assembly import assembly_note, detect_assembly
 from dna_compare.config import Settings, default_settings
 from dna_compare.eigenstrat import AadrPanel
-from dna_compare.models import AnalysisResult, ComparisonBlock, HaplogroupResult
-from dna_compare.vcf_parser import parse_vcf
+from dna_compare.liftover import ensure_hg38_to_hg19_chain, lift_query_index, load_chain
+from dna_compare.models import AnalysisResult, ComparisonBlock, HaplogroupResult, RelatednessResult
+from dna_compare.vcf_parser import parse_vcf, preview_rows
 
 
 class AnalysisService:
@@ -22,6 +25,7 @@ class AnalysisService:
     def __init__(self, settings: Settings | None = None):
         self.settings = settings or default_settings()
         self._panel: AadrPanel | None = None
+        self._chain = None
 
     @property
     def panel(self) -> AadrPanel | None:
@@ -42,6 +46,8 @@ class AnalysisService:
         compare_populations_flag: bool | None = None,
         compare_ancestry_flag: bool | None = None,
         compare_haplogroups_flag: bool | None = None,
+        other_source: Path | str | TextIO | BinaryIO | None = None,
+        other_filename: str | None = None,
     ) -> AnalysisResult:
         do_hominin = self.settings.compare_hominin if compare_hominin_flag is None else compare_hominin_flag
         do_caste = self.settings.compare_caste if compare_caste_flag is None else compare_caste_flag
@@ -67,11 +73,14 @@ class AnalysisService:
                 populations=empty_pops,
                 ancestry=empty_ancestry,
                 haplogroups=HaplogroupResult(available=False, notes=[str(exc)]),
+                relatedness=RelatednessResult(available=False, notes=[str(exc)]),
                 errors=[f"Failed to parse VCF: {exc}"],
             )
 
         if filename:
             source_name = filename
+        detect_assembly(summary, assume=self.settings.assume_assembly)
+        index = self._maybe_lift(summary, index)
         panel = self.panel
         hominin = (
             compare_hominin(index, panel=panel, settings=self.settings)
@@ -98,6 +107,21 @@ class AnalysisService:
             if do_haplo
             else HaplogroupResult(available=False, notes=["Haplogroup comparison disabled."])
         )
+        relatedness = self._compare_other(
+            summary,
+            index,
+            other_source,
+            other_filename,
+            source_name,
+        )
+        note = assembly_note(summary)
+        if note:
+            hominin.notes = [note] + list(hominin.notes)
+            caste.notes = [note] + list(caste.notes)
+            populations.notes = [note] + list(populations.notes)
+            ancestry.notes = [note] + list(ancestry.notes)
+            haplogroups.notes = [note] + list(haplogroups.notes)
+            relatedness.notes = [note] + list(relatedness.notes)
         return AnalysisResult(
             ok=True,
             source_filename=source_name,
@@ -107,4 +131,69 @@ class AnalysisService:
             populations=populations,
             ancestry=ancestry,
             haplogroups=haplogroups,
+            relatedness=relatedness,
+        )
+
+    def _maybe_lift(self, summary, index: dict[tuple[str, int], dict]) -> dict[tuple[str, int], dict]:
+        if summary.assembly != "GRCh38":
+            return index
+        chain_path = ensure_hg38_to_hg19_chain(
+            self.settings.liftover_chain,
+            download=self.settings.auto_download_chain,
+        )
+        if chain_path is None:
+            return index
+        try:
+            if self._chain is None:
+                self._chain = load_chain(chain_path)
+            lifted, stats = lift_query_index(index, self._chain)
+        except (OSError, ValueError):
+            return index
+        summary.lifted_to = "GRCh37"
+        summary.n_lifted = int(stats["n_lifted"])
+        summary.n_unmapped = int(stats["n_unmapped"])
+        summary.preview = preview_rows(lifted, self.settings.variant_preview_limit)
+        return lifted
+
+    def _compare_other(
+        self,
+        summary,
+        index: dict[tuple[str, int], dict],
+        other_source: Path | str | TextIO | BinaryIO | None,
+        other_filename: str | None,
+        query_filename: str,
+    ) -> RelatednessResult:
+        if other_source is None:
+            return RelatednessResult(
+                available=False,
+                query_sample_id=summary.sample_id,
+                notes=["No second VCF uploaded. Add a parent, relative, or any other SNP VCF to estimate closeness."],
+            )
+        other_name = other_filename or (
+            Path(other_source).name if isinstance(other_source, (str, Path)) else "other.vcf"
+        )
+        try:
+            other_summary, other_index = parse_vcf(
+                other_source, preview_limit=self.settings.variant_preview_limit
+            )
+        except Exception as exc:  # noqa: BLE001
+            return RelatednessResult(
+                available=False,
+                other_filename=other_name,
+                query_sample_id=summary.sample_id,
+                notes=[f"Failed to parse second VCF: {exc}"],
+            )
+        detect_assembly(other_summary, assume=self.settings.assume_assembly)
+        other_index = self._maybe_lift(other_summary, other_index)
+        return compare_relatedness(
+            index,
+            other_index,
+            other_filename=other_name,
+            other_sample_id=other_summary.sample_id,
+            query_sample_id=summary.sample_id,
+            query_filename=query_filename,
+            query_assembly=summary.assembly,
+            other_assembly=other_summary.assembly,
+            query_lifted_to=summary.lifted_to,
+            other_lifted_to=other_summary.lifted_to,
         )

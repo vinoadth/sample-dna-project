@@ -17,7 +17,8 @@
       <div class="page-intro">
         <p class="lead text-secondary">
           Upload a SNP VCF or open a bundled sample. Mixture weights are from overlapping
-          AADR Human Origins SNPs — not ethnic identity.
+          AADR Human Origins SNPs (GRCh37 / hg19) — not ethnic identity. GSA v3 / gtc2vcf
+          files on GRCh38 are lifted to hg19 before comparison.
         </p>
         <section class="card shadow-sm mb-4" id="live-controls">
           <div class="card-body">
@@ -39,6 +40,25 @@
                 </div>
                 <div class="col-lg-2">
                   <button type="submit" class="btn btn-primary w-100" id="run-btn">Analyze</button>
+                </div>
+              </div>
+              <div class="row g-3 align-items-end mt-0">
+                <div class="col-lg-5">
+                  <label class="form-label" for="other-select">Optional second sample (relatedness)</label>
+                  <select class="form-select" id="other-select" name="other_sample"></select>
+                </div>
+                <div class="col-lg-5">
+                  <label class="form-label" for="other-file">Or upload a second VCF</label>
+                  <input
+                    class="form-control"
+                    id="other-file"
+                    name="other"
+                    type="file"
+                    accept=".vcf,.vcf.gz,text/plain"
+                  />
+                </div>
+                <div class="col-lg-2">
+                  <p class="form-text mb-0">Parent, relative, or friend — optional.</p>
                 </div>
               </div>
               <fieldset class="mt-3">

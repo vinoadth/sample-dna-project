@@ -8,6 +8,8 @@ data/uploads/
 .pytest_cache/
 data/references/aadr/*
 !data/references/aadr/.gitkeep
+data/references/liftover/*
+!data/references/liftover/.gitkeep
 data/references/cache
 data/samples/*
 !data/samples/demo*

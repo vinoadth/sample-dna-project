@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections import Counter
 from pathlib import Path
 
@@ -11,22 +12,22 @@ from dna_compare.models import (
     HaplogroupRow,
 )
 
-# Published backbone Y markers (hg19 / GRCh37). Alleles from ISOGG / FTDNA / Karafet.
-# M17 is an indel on arrays and is ignored for the final call if it contradicts M173.
+# Published backbone Y markers. `positions` are hg19 / GRCh37; `positions_hg38` are GRCh38.
+# Alleles from ISOGG / FTDNA / Karafet. M17 is an indel and is ignored if it contradicts M173.
 Y_MARKERS: tuple[dict, ...] = (
-    {"haplogroup": "R (M207)", "marker": "M207", "rsids": ("rs2032658",), "positions": (15581983,), "ancestral": "A", "derived": "G", "backbone": True},
-    {"haplogroup": "R1 (M173)", "marker": "M173", "rsids": ("rs2032624",), "positions": (15026424,), "ancestral": "A", "derived": "C", "backbone": True},
-    {"haplogroup": "R1a1 (M17)", "marker": "M17", "rsids": ("rs3908",), "positions": (21733165, 21733168), "ancestral": "D", "derived": "I", "backbone": True},
-    {"haplogroup": "R1a1a (M198)", "marker": "M198", "rsids": ("rs2020857",), "positions": (15030752,), "ancestral": "C", "derived": "T", "backbone": True},
-    {"haplogroup": "R1b (M343)", "marker": "M343", "rsids": ("rs9786184",), "positions": (2887824,), "ancestral": "C", "derived": "A", "backbone": True},
-    {"haplogroup": "H (M69)", "marker": "M69", "rsids": ("rs2032673",), "positions": (21894058,), "ancestral": "T", "derived": "C", "backbone": True},
-    {"haplogroup": "L (M20)", "marker": "M20", "rsids": ("rs3911",), "positions": (21733454,), "ancestral": "A", "derived": "G", "backbone": True},
-    {"haplogroup": "J2 (M172)", "marker": "M172", "rsids": ("rs2032604",), "positions": (14969634,), "ancestral": "T", "derived": "G", "backbone": True},
-    {"haplogroup": "J1 (M267)", "marker": "M267", "rsids": ("rs9341313",), "positions": (22741818,), "ancestral": "T", "derived": "G", "backbone": True},
-    {"haplogroup": "I (M170)", "marker": "M170", "rsids": ("rs2032597",), "positions": (14847792,), "ancestral": "A", "derived": "C", "backbone": True},
-    {"haplogroup": "G (M201)", "marker": "G-M201", "rsids": ("rs2032636",), "positions": (15027529,), "ancestral": "G", "derived": "T", "backbone": True},
-    {"haplogroup": "C (M130)", "marker": "M130", "rsids": ("rs35284970",), "positions": (2734854,), "ancestral": "C", "derived": "T", "backbone": True},
-    {"haplogroup": "Q (M242)", "marker": "M242", "rsids": ("rs8179021",), "positions": (15018582,), "ancestral": "C", "derived": "T", "backbone": True},
+    {"haplogroup": "R (M207)", "marker": "M207", "rsids": ("rs2032658",), "positions": (15581983,), "positions_hg38": (13470103,), "ancestral": "A", "derived": "G", "backbone": True},
+    {"haplogroup": "R1 (M173)", "marker": "M173", "rsids": ("rs2032624",), "positions": (15026424,), "positions_hg38": (12914512,), "ancestral": "A", "derived": "C", "backbone": True},
+    {"haplogroup": "R1a1 (M17)", "marker": "M17", "rsids": ("rs3908",), "positions": (21733165, 21733168), "positions_hg38": (19571279, 19571280, 19571281, 19571282), "ancestral": "D", "derived": "I", "backbone": True},
+    {"haplogroup": "R1a1a (M198)", "marker": "M198", "rsids": ("rs2020857",), "positions": (15030752,), "positions_hg38": (12918840,), "ancestral": "C", "derived": "T", "backbone": True},
+    {"haplogroup": "R1b (M343)", "marker": "M343", "rsids": ("rs9786184",), "positions": (2887824,), "positions_hg38": (3019783,), "ancestral": "C", "derived": "A", "backbone": True},
+    {"haplogroup": "H (M69)", "marker": "M69", "rsids": ("rs2032673",), "positions": (21894058,), "positions_hg38": (19732172,), "ancestral": "T", "derived": "C", "backbone": True},
+    {"haplogroup": "L (M20)", "marker": "M20", "rsids": ("rs3911",), "positions": (21733454,), "positions_hg38": (19571568,), "ancestral": "A", "derived": "G", "backbone": True},
+    {"haplogroup": "J2 (M172)", "marker": "M172", "rsids": ("rs2032604",), "positions": (14969634,), "positions_hg38": (12857709,), "ancestral": "T", "derived": "G", "backbone": True},
+    {"haplogroup": "J1 (M267)", "marker": "M267", "rsids": ("rs9341313",), "positions": (22741818,), "positions_hg38": (20579932,), "ancestral": "T", "derived": "G", "backbone": True},
+    {"haplogroup": "I (M170)", "marker": "M170", "rsids": ("rs2032597",), "positions": (14847792,), "positions_hg38": (12735858,), "ancestral": "A", "derived": "C", "backbone": True},
+    {"haplogroup": "G (M201)", "marker": "G-M201", "rsids": ("rs2032636",), "positions": (15027529,), "positions_hg38": (12915617,), "ancestral": "G", "derived": "T", "backbone": True},
+    {"haplogroup": "C (M130)", "marker": "M130", "rsids": ("rs35284970",), "positions": (2734854,), "positions_hg38": (2866813,), "ancestral": "C", "derived": "T", "backbone": True},
+    {"haplogroup": "Q (M242)", "marker": "M242", "rsids": ("rs8179021",), "positions": (15018582,), "positions_hg38": (12906671,), "ancestral": "C", "derived": "T", "backbone": True},
 )
 
 # Deepest-first labels used for the sample call.
@@ -121,13 +122,17 @@ _ANNO_SEX = 30
 _ANNO_Y_ISOGG = 35
 _ANNO_Y_MANUAL = 36
 _ANNO_MT = 38
+_RSID_RE = re.compile(r"(rs\d+)", re.I)
 
 
 def _norm_rsid(rsid: str) -> str:
-    rsid = (rsid or "").split(",")[0].strip()
-    if rsid.startswith("exm-"):
-        rsid = rsid[4:]
-    return rsid
+    text = (rsid or "").split(",")[0].strip()
+    match = _RSID_RE.search(text)
+    if match:
+        return match.group(1).lower()
+    if text.lower().startswith("exm-"):
+        text = text[4:]
+    return text
 
 
 def _observed_allele(row: dict) -> str | None:
@@ -156,21 +161,58 @@ def _observed_allele(row: dict) -> str | None:
     return None
 
 
-def _lookup_marker(index: dict[tuple[str, int], dict], spec: dict) -> dict | None:
+def _rsid_index(query_index: dict[tuple[str, int], dict]) -> dict[tuple[str, str], dict]:
+    out: dict[tuple[str, str], dict] = {}
+    for row in query_index.values():
+        rsid = _norm_rsid(str(row.get("rsid") or ""))
+        if rsid and rsid not in {".", ""}:
+            out.setdefault((str(row.get("chrom") or ""), rsid), row)
+    return out
+
+
+def _allele_compatible(row: dict, ancestral: str, derived: str) -> bool:
+    observed = _observed_allele(row)
+    if observed is None or observed == "het":
+        return False
+    obs = observed.upper()
+    anc, der = ancestral.upper(), derived.upper()
+    if obs in {anc, der}:
+        return True
+    if anc not in {"D", "I"} and der not in {"D", "I"}:
+        return obs in {anc.translate(_COMP), der.translate(_COMP)}
+    return False
+
+
+def _lookup_marker(
+    index: dict[tuple[str, int], dict],
+    spec: dict,
+    rsid_index: dict[tuple[str, str], dict] | None = None,
+) -> dict | None:
     chrom = spec.get("chrom") or "Y"
-    for pos in spec["positions"]:
+    want = {_norm_rsid(r) for r in spec.get("rsids") or () if r}
+    # rsID first: a GSA/hg38 site must not be read as a different hg19 SNP.
+    if want:
+        lookup = rsid_index if rsid_index is not None else _rsid_index(index)
+        for rsid in want:
+            row = lookup.get((chrom, rsid))
+            if row:
+                return row
+    positions = list(spec.get("positions") or ()) + list(spec.get("positions_hg38") or ())
+    hits = []
+    seen: set[int] = set()
+    for pos in positions:
         row = index.get((chrom, int(pos)))
-        if row:
-            return row
-    want = {_norm_rsid(r) for r in spec.get("rsids") or ()}
-    if not want:
+        if row and id(row) not in seen:
+            seen.add(id(row))
+            hits.append(row)
+    if not hits:
         return None
-    for row in index.values():
-        if row.get("chrom") != chrom:
-            continue
-        if _norm_rsid(str(row.get("rsid") or "")) in want:
+    if len(hits) == 1:
+        return hits[0]
+    for row in hits:
+        if _allele_compatible(row, spec["ancestral"], spec["derived"]):
             return row
-    return None
+    return hits[0]
 
 
 def _status(observed: str | None, ancestral: str, derived: str) -> str:
@@ -238,8 +280,9 @@ def marker_quality_note(calls: list[HaplogroupMarkerCall], *, label: str) -> str
 
 def score_markers(query_index: dict[tuple[str, int], dict], specs: tuple[dict, ...]) -> list[HaplogroupMarkerCall]:
     calls: list[HaplogroupMarkerCall] = []
+    rsid_index = _rsid_index(query_index)
     for spec in specs:
-        row = _lookup_marker(query_index, spec)
+        row = _lookup_marker(query_index, spec, rsid_index)
         observed = _observed_allele(row) if row else None
         status = _status(observed, spec["ancestral"], spec["derived"])
         rsids = spec.get("rsids") or ()
@@ -552,6 +595,7 @@ def compare_haplogroups(
     notes = [
         "One person has one Y haplogroup. Percentages are AADR male counts in each scored group, not mixture weights.",
         "R1a1 here is the M17 / M198 lineage (also written R1a1a). M17 on SNP arrays is an indel and is marked conflict if M173 is ancestral.",
+        "Y markers match by rsID first, then published hg19 and hg38 positions, so a GSA/gtc2vcf file is not scored at the wrong physical site.",
         "AADR Y labels are the ISOGG column in v66.1 HO .anno (YFull-based automatic calls). "
         "Several HO community labels have only a few samples (often 2–9).",
     ]
@@ -561,84 +605,99 @@ def compare_haplogroups(
         "A dash means that label has no mt haplogroup in the AADR .anno (common for 1000 Genomes HO groups such as STU, ITU, GIH, PJL, BEB).",
         "M3 / R7 / R8 sit inside M / R; those rows can add up to more than 100%.",
     ]
-    calls = score_y_markers(query_index)
-    best = best_sample_haplogroup(calls)
-    sample_status = {c.haplogroup: c.status for c in calls}
-    mt_calls = score_mt_markers(query_index)
-    mt_best = best_sample_haplogroup(mt_calls, _MT_SPECIFICITY)
-    mt_status = {c.haplogroup: c.status for c in mt_calls}
-
     n_y = sum(1 for (chrom, _pos) in query_index if chrom == "Y")
     n_mt = sum(1 for (chrom, _pos) in query_index if chrom == "MT")
-    if n_y == 0:
-        notes.append("No chrY SNPs in this VCF, so every marker is no-call.")
-    elif best:
-        notes.append(f"Deepest consistent derived marker in this file: {best}.")
+    y_present = n_y > 0
+    mt_present = n_mt > 0
+
+    calls = score_y_markers(query_index) if y_present else []
+    best = best_sample_haplogroup(calls) if y_present else None
+    sample_status = {c.haplogroup: c.status for c in calls}
+    mt_calls = score_mt_markers(query_index) if mt_present else []
+    mt_best = best_sample_haplogroup(mt_calls, _MT_SPECIFICITY) if mt_present else None
+    mt_status = {c.haplogroup: c.status for c in mt_calls}
+
+    if y_present:
+        if best:
+            notes.append(f"Deepest consistent derived marker in this file: {best}.")
+        else:
+            notes.append("No backbone Y marker is derived in this file (or derived calls conflict).")
+        notes.append(marker_quality_note(calls, label="Y"))
     else:
-        notes.append("No backbone Y marker is derived in this file (or derived calls conflict).")
-    notes.append(marker_quality_note(calls, label="Y"))
-    if n_mt == 0:
-        mt_notes.append("No chrMT SNPs in this VCF, so every mt marker is no-call.")
-    elif mt_best:
-        mt_notes.append(f"Deepest consistent derived mt marker in this file: {mt_best}.")
+        notes = [
+            "No chrY SNPs in this VCF (typical of a mother / filtered extract), so the Y haplogroup table is omitted."
+        ]
+    if mt_present:
+        if mt_best:
+            mt_notes.append(f"Deepest consistent derived mt marker in this file: {mt_best}.")
+        else:
+            mt_notes.append("No backbone mt marker is derived in this file (or calls conflict).")
+        mt_notes.append(marker_quality_note(mt_calls, label="mtDNA"))
     else:
-        mt_notes.append("No backbone mt marker is derived in this file (or calls conflict).")
-    mt_notes.append(marker_quality_note(mt_calls, label="mtDNA"))
+        mt_notes = [
+            "No chrMT SNPs in this VCF, so the mtDNA haplogroup table is omitted."
+        ]
 
     anno_path = settings.aadr_anno
     groups = settings.caste_groups()
+    rows: list[HaplogroupRow] = []
+    mt_rows: list[HaplogroupRow] = []
     if not anno_path.exists():
-        notes.append("AADR .anno not found; group percentages need data/references/aadr/*.anno.")
-        mt_notes.append("AADR .anno not found; group percentages need data/references/aadr/*.anno.")
+        if y_present:
+            notes.append("AADR .anno not found; group percentages need data/references/aadr/*.anno.")
+        if mt_present:
+            mt_notes.append("AADR .anno not found; group percentages need data/references/aadr/*.anno.")
         return HaplogroupResult(
-            available=any(c.status != "no-call" for c in calls),
+            available=y_present,
             sample_best=best,
             markers=calls,
             rows=[],
             notes=notes,
-            mt_available=any(c.status != "no-call" for c in mt_calls),
+            mt_available=mt_present,
             mt_sample_best=mt_best,
             mt_markers=mt_calls,
             mt_rows=[],
             mt_notes=mt_notes,
-            status_notes=list(SAMPLE_STATUS_NOTES),
+            status_notes=list(SAMPLE_STATUS_NOTES) if y_present or mt_present else [],
         )
-    anno_by_pop = load_anno_y_by_group(anno_path)
-    rows = aadr_frequency_rows(anno_by_pop, groups, sample_status)
-    n_males = sum(len(anno_by_pop.get(pop, [])) for pops in groups.values() for pop in pops)
-    notes.append(f"AADR males in scored caste/community groups: {n_males}.")
-    mt_by_pop = load_anno_mt_by_group(anno_path)
-    mt_rows = aadr_mt_frequency_rows(mt_by_pop, groups, mt_status)
-    n_mt_called = sum(
-        1
-        for pops in groups.values()
-        for pop in pops
-        for tok in mt_by_pop.get(pop, [])
-        if tok is not None
-    )
-    mt_with_calls = [
-        name
-        for name, pops in groups.items()
-        if any(tok is not None for pop in pops for tok in mt_by_pop.get(pop, []))
-    ]
-    if mt_with_calls:
-        mt_notes.append(
-            "Labels with at least one AADR mt call: "
-            + ", ".join(mt_with_calls)
-            + f" ({n_mt_called} calls). Example: Vellalar/VLR is a small HO set that happens to have mt filled in."
+    if y_present:
+        anno_by_pop = load_anno_y_by_group(anno_path)
+        rows = aadr_frequency_rows(anno_by_pop, groups, sample_status)
+        n_males = sum(len(anno_by_pop.get(pop, [])) for pops in groups.values() for pop in pops)
+        notes.append(f"AADR males in scored caste/community groups: {n_males}.")
+    if mt_present:
+        mt_by_pop = load_anno_mt_by_group(anno_path)
+        mt_rows = aadr_mt_frequency_rows(mt_by_pop, groups, mt_status)
+        n_mt_called = sum(
+            1
+            for pops in groups.values()
+            for pop in pops
+            for tok in mt_by_pop.get(pop, [])
+            if tok is not None
         )
-    else:
-        mt_notes.append("No scored label has an AADR mt haplogroup in this .anno.")
+        mt_with_calls = [
+            name
+            for name, pops in groups.items()
+            if any(tok is not None for pop in pops for tok in mt_by_pop.get(pop, []))
+        ]
+        if mt_with_calls:
+            mt_notes.append(
+                "Labels with at least one AADR mt call: "
+                + ", ".join(mt_with_calls)
+                + f" ({n_mt_called} calls). Example: Vellalar/VLR is a small HO set that happens to have mt filled in."
+            )
+        else:
+            mt_notes.append("No scored label has an AADR mt haplogroup in this .anno.")
     return HaplogroupResult(
-        available=True,
+        available=y_present,
         sample_best=best,
         markers=calls,
         rows=rows,
         notes=notes,
-        mt_available=True,
+        mt_available=mt_present,
         mt_sample_best=mt_best,
         mt_markers=mt_calls,
         mt_rows=mt_rows,
         mt_notes=mt_notes,
-        status_notes=list(SAMPLE_STATUS_NOTES),
+        status_notes=list(SAMPLE_STATUS_NOTES) if y_present or mt_present else [],
     )

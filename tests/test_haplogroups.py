@@ -95,9 +95,38 @@ MT	14766	rs3135031	C	T	.	PASS	.	GT	1
             "R8 (13215C)", "U (12308G)", "M (10400T)", "R (12705C)",
         )), "R (12705C)")
 
+    def test_omit_y_table_when_vcf_has_no_chrY(self):
+        vcf = """##fileformat=VCFv4.2
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	MOM1
+MT	10400	rs28358278	C	T	.	PASS	.	GT	0
+MT	12705	R	C	T	.	PASS	.	GT	0
+1	752566	rs3094315	G	A	.	PASS	.	GT	0/1
+"""
+        _summary, index = parse_vcf(StringIO(vcf))
+        result = compare_haplogroups(index, settings=default_settings())
+        self.assertFalse(result.available)
+        self.assertEqual(result.rows, [])
+        self.assertEqual(result.markers, [])
+        self.assertTrue(result.mt_available)
+        self.assertTrue(any("Y haplogroup table is omitted" in note for note in result.notes))
+
+    def test_omit_mt_table_when_vcf_has_no_chrMT(self):
+        _summary, index = parse_vcf(StringIO(M17_CONFLICT_VCF))
+        result = compare_haplogroups(index, settings=default_settings())
+        self.assertTrue(result.available)
+        self.assertFalse(result.mt_available)
+        self.assertEqual(result.mt_rows, [])
+        self.assertEqual(result.mt_markers, [])
+        self.assertTrue(any("mtDNA haplogroup table is omitted" in note for note in result.mt_notes))
+
     def test_compare_mt_counts_only_groups_with_anno_calls(self):
         settings = default_settings()
-        _summary, index = parse_vcf(StringIO(M17_CONFLICT_VCF))
+        mt_vcf = """##fileformat=VCFv4.2
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	TEST1
+MT	10400	rs28358278	C	T	.	PASS	.	GT	0
+MT	12705	R	C	T	.	PASS	.	GT	0
+"""
+        _summary, index = parse_vcf(StringIO(mt_vcf))
         result = compare_haplogroups(index, settings=settings)
         if not settings.aadr_anno.exists():
             self.skipTest("AADR .anno not present")
@@ -119,6 +148,35 @@ MT	14766	rs3135031	C	T	.	PASS	.	GT	1
         if "Vellalar" in r_row.groups and r_row.groups["Vellalar"].n_called:
             self.assertEqual(r_row.groups["Vellalar"].n, 5)
             self.assertEqual(m_row.groups["Vellalar"].n, 4)
+
+    def test_hg38_positions_call_r1a1_without_chain(self):
+        vcf = """##fileformat=VCFv4.2
+##source=bcftools_gtc2vcf
+##reference=GSA-24v3-0_A1
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	TEST1
+Y	13470103	rs2032658	A	G	.	PASS	.	GT	1
+Y	12914512	rs2032624	A	C	.	PASS	.	GT	1
+Y	19571279	rs3908	D	I	.	PASS	.	GT	1
+"""
+        _summary, index = parse_vcf(StringIO(vcf))
+        calls = score_y_markers(index)
+        self.assertEqual(best_sample_haplogroup(calls), "R1a1 (M17)")
+
+    def test_rsid_wins_over_decoy_at_hg19_coordinate(self):
+        vcf = """##fileformat=VCFv4.2
+##source=bcftools_gtc2vcf
+##reference=GSA-24v3-0_A1
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	TEST1
+Y	15026424	not_m173	T	A	.	PASS	.	GT	0
+Y	13470103	exm-rs2032658	A	G	.	PASS	.	GT	1
+Y	12914512	rs2032624	A	C	.	PASS	.	GT	1
+Y	19571279	rs3908	D	I	.	PASS	.	GT	1
+"""
+        _summary, index = parse_vcf(StringIO(vcf))
+        calls = {c.marker: c for c in score_y_markers(index)}
+        self.assertEqual(calls["M173"].status, "derived")
+        self.assertEqual(calls["M17"].status, "derived")
+        self.assertEqual(best_sample_haplogroup(list(calls.values())), "R1a1 (M17)")
 
     def test_marker_quality_from_gq_dp_igc(self):
         _summary, index = parse_vcf(StringIO(QUALITY_VCF))

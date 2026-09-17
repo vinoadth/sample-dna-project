@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import gzip
+import re
 from collections import Counter
 from pathlib import Path
 from typing import BinaryIO, Iterator, TextIO
 
 from dna_compare.config import VARIANT_PREVIEW_LIMIT
 from dna_compare.models import VariantRow, VcfSummary
+
+_CONTIG_RE = re.compile(r"ID=([^,>]+).*length=(\d+)", re.I)
+_ASM_HINTS = ("grch38", "hg38", "grch37", "hg19", "gsa-24v3", "gtc2vcf", "human_g1k_v37")
 
 
 def _open_text(path: Path) -> TextIO:
@@ -91,12 +95,32 @@ def _sample_metrics(qual: str, fields: dict[str, str]) -> dict:
     }
 
 
-def iter_vcf_snps(handle: TextIO) -> tuple[list[str], Iterator[dict]]:
+def _ingest_header(line: str, meta: dict) -> None:
+    if line.startswith("##reference="):
+        meta["reference"] = line[len("##reference=") :].strip().strip('"')
+        return
+    if line.startswith("##source="):
+        sources = meta.setdefault("sources", [])
+        sources.append(line[len("##source=") :].strip().strip('"'))
+        return
+    if line.startswith("##contig="):
+        match = _CONTIG_RE.search(line)
+        if match:
+            meta.setdefault("contig_lengths", {})[normalize_chrom(match.group(1))] = int(match.group(2))
+        return
+    low = line.lower()
+    if any(hint in low for hint in _ASM_HINTS):
+        meta.setdefault("sources", []).append(line[2:].strip()[:240])
+
+
+def iter_vcf_snps(handle: TextIO) -> tuple[list[str], dict, Iterator[dict]]:
     samples: list[str] = []
+    meta: dict = {"reference": None, "sources": [], "contig_lengths": {}}
 
     def _rows() -> Iterator[dict]:
         for raw in handle:
             if raw.startswith("##"):
+                _ingest_header(raw.rstrip("\n"), meta)
                 continue
             if raw.startswith("#CHROM"):
                 header = raw.rstrip("\n").split("\t")
@@ -126,11 +150,33 @@ def iter_vcf_snps(handle: TextIO) -> tuple[list[str], Iterator[dict]]:
                 "is_snp": snp,
                 "genotype": gt,
                 "dosage_alt": dosage,
+                "vcf_filter": cols[6] if len(cols) > 6 else ".",
                 "n_samples": max(0, len(cols) - 9),
                 **metrics,
             }
 
-    return samples, _rows()
+    return samples, meta, _rows()
+
+
+def preview_rows(index: dict[tuple[str, int], dict], limit: int) -> list[VariantRow]:
+    rows: list[VariantRow] = []
+    for (_chrom, _pos), row in index.items():
+        if not row.get("is_snp") and row.get("chrom") not in {"Y", "MT"}:
+            continue
+        rows.append(
+            VariantRow(
+                chrom=row["chrom"],
+                pos=row["pos"],
+                rsid=str(row.get("rsid") or ""),
+                ref=str(row.get("ref") or ""),
+                alt=str(row.get("alt") or ""),
+                genotype=str(row.get("genotype") or ""),
+                dosage_alt=row.get("dosage_alt"),
+            )
+        )
+        if len(rows) >= limit:
+            break
+    return rows
 
 
 def parse_vcf(
@@ -174,7 +220,7 @@ def parse_vcf(
 
 
 def _parse_open(handle: TextIO, *, filename: str, preview_limit: int) -> tuple[VcfSummary, dict[tuple[str, int], dict]]:
-    samples, rows = iter_vcf_snps(handle)
+    samples, meta, rows = iter_vcf_snps(handle)
     preview: list[VariantRow] = []
     index: dict[tuple[str, int], dict] = {}
     chrom_counts: Counter[str] = Counter()
@@ -212,6 +258,7 @@ def _parse_open(handle: TextIO, *, filename: str, preview_limit: int) -> tuple[V
 
     if samples:
         sample_id = samples[0]
+    sources = meta.get("sources") or []
     summary = VcfSummary(
         sample_id=sample_id,
         n_records=n_records,
@@ -220,5 +267,8 @@ def _parse_open(handle: TextIO, *, filename: str, preview_limit: int) -> tuple[V
         n_samples_in_file=n_file_samples or len(samples),
         chrom_counts=dict(sorted(chrom_counts.items(), key=lambda kv: kv[0])),
         preview=preview,
+        reference=meta.get("reference"),
+        source="; ".join(sources) if sources else None,
+        contig_lengths=dict(meta.get("contig_lengths") or {}),
     )
     return summary, index

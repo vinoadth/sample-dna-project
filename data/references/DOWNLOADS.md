@@ -84,3 +84,13 @@ After those files are in `data/references/caste/`, they still need to be wired i
 ## Query VCF
 
 Your input should be SNP-only (no indels required). Chromosomes may be `1` or `chr1`. The JSON from `python main.py analyze file.vcf --json` is the payload a later `POST /analyze` API and HTML table can consume unchanged.
+
+Optional second VCF (`--other`, dashboard “second sample”, or multipart field `other`): a parent, cousin, friend, or any other SNP file. The two people do not have to be related. When it is present, the app estimates KING-robust kinship on overlapping autosomal SNPs and bins that into parent–child / cousin / unrelated. This is not a legal relationship test.
+
+Bundled try-out: `data/samples/demo.snps.vcf` (DEMO1) and `data/samples/demo2.snps.vcf` (DEMO2). DEMO2 is a synthetic first cousin of DEMO1 (random genotypes, not a real person).
+
+**Assembly:** AADR v66.1 HO and the published Y-marker table are **GRCh37 / hg19**. Illumina GSA v3 + `bcftools gtc2vcf` (`GSA-24v3-0_A1`) is hg38 only when gtc2vcf was given a GRCh38 FASTA. If the command used `human_g1k_v37.fasta` / GRCh37 (as in the C8XY processed files), coordinates are already hg19 — do not lift them. The app reads contig lengths, `##reference`, and the gtc2vcf `-f` FASTA path. True hg38 files are lifted with `hg38ToHg19.over.chain.gz` before AADR overlap. Haplogroup markers also match by rsID and published hg38 positions, so a site at the same *number* on the other assembly is not treated as the same SNP.
+
+Save the chain as `data/references/liftover/hg38ToHg19.over.chain.gz` (or run `python main.py fetch-references`). Source: `https://hgdownload.soe.ucsc.edu/goldenPath/hg38/liftOver/hg38ToHg19.over.chain.gz`. Override detection with `--assembly GRCh38` or `--assembly GRCh37`.
+
+mtDNA markers stay on rCRS / chrM and are not lifted. PLINK `--me` Mendelian-error filters are for family trios, not the haplogroup parent/child column.

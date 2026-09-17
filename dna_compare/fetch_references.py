@@ -7,11 +7,13 @@ import numpy as np
 
 from dna_compare.config import (
     ARCHAIC_AADR_SAMPLES,
+    HG38_TO_HG19_CHAIN,
     HOMININ_DIR,
     HOMININ_DOWNLOADS,
     Settings,
     default_settings,
 )
+from dna_compare.liftover import ensure_hg38_to_hg19_chain
 from dna_compare.eigenstrat import AadrPanel, PACKED_MISSING
 from dna_compare.vcf_parser import normalize_chrom
 
@@ -127,4 +129,9 @@ def fetch_references(settings: Settings | None = None) -> list[str]:
         notes.append(f"Wrote {filename} from AADR {sample_id}")
 
     notes.append("Greek/Chinese/Persian/caste comparisons use AADR HO directly; extra caste VCFs are not written.")
+    chain = ensure_hg38_to_hg19_chain(HG38_TO_HG19_CHAIN, download=True)
+    if chain is not None:
+        notes.append(f"Ready {chain} for GSA/gtc2vcf GRCh38 → GRCh37 liftover")
+    else:
+        notes.append(f"Could not download {HG38_TO_HG19_CHAIN.name}; place the UCSC hg38ToHg19 chain there.")
     return notes

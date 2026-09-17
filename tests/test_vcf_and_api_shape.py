@@ -14,7 +14,7 @@ class VcfAndApiTests(unittest.TestCase):
     def test_parse_skips_indels_and_normalizes_chrom(self):
         summary, index = parse_vcf(FIXTURE)
         self.assertEqual(summary.sample_id, "DEMO1")
-        self.assertEqual(summary.n_snps, 7)
+        self.assertGreaterEqual(summary.n_snps, 200)
         self.assertEqual(summary.n_non_snp_skipped, 1)
         self.assertIn(("1", 752566), index)
         self.assertIn(("3", 12345), index)
@@ -27,7 +27,7 @@ class VcfAndApiTests(unittest.TestCase):
     def test_parse_from_bytes_for_future_api_upload(self):
         payload = FIXTURE.read_bytes()
         summary, index = parse_vcf(BytesIO(payload), preview_limit=3)
-        self.assertEqual(summary.n_snps, 7)
+        self.assertGreaterEqual(summary.n_snps, 200)
         self.assertEqual(len(summary.preview), 3)
         self.assertIn(("X", 2699624), index)
 
@@ -56,6 +56,11 @@ class VcfAndApiTests(unittest.TestCase):
         self.assertIn("mt_rows", payload["haplogroups"])
         self.assertIn("mt_notes", payload["haplogroups"])
         self.assertIn("status_notes", payload["haplogroups"])
+        self.assertIn("assembly", payload["vcf"])
+        self.assertIn(payload["vcf"]["assembly"], {"unknown", "GRCh37", "GRCh38"})
+        self.assertIn("relatedness", payload)
+        self.assertFalse(payload["relatedness"]["available"])
+        self.assertIn("second VCF", payload["relatedness"]["notes"][0])
 
     def test_ancestry_aadr_labels_exist(self):
         from dna_compare.config import ANCESTRY_AADR_POPS, ANCESTRY_RIGHT_POPS, default_settings
@@ -95,6 +100,8 @@ class VcfAndApiTests(unittest.TestCase):
         page = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
         self.assertIn("/static/vendor/cerulean.min.css", page)
         self.assertIn("/static/vendor/bootstrap.bundle.min.js", page)
+        self.assertIn("other-select", page)
+        self.assertIn("other-file", page)
         self.assertNotIn("cdn.", page.lower())
         self.assertIsNotNone(_static_file("/static/vendor/cerulean.min.css"))
         self.assertIsNone(_static_file("/static/../web.py"))

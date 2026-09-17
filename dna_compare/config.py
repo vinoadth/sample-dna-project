@@ -19,6 +19,10 @@ AADR_IND = Path(str(AADR_STEM) + ".ind")
 AADR_SNP = Path(str(AADR_STEM) + ".snp")
 AADR_ANNO = AADR_DIR / "v66.p1_HO.aadr.PUB.anno"
 
+LIFTOVER_DIR = REFERENCE_DIR / "liftover"
+HG38_TO_HG19_CHAIN = LIFTOVER_DIR / "hg38ToHg19.over.chain.gz"
+HG38_TO_HG19_CHAIN_URL = "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/liftOver/hg38ToHg19.over.chain.gz"
+
 # Legacy locations (pre-move). default_settings() prefers these if still in the project root.
 _LEGACY_STEM = PROJECT_ROOT / "v66.p1_HO.aadr.patch.PUB"
 
@@ -290,6 +294,9 @@ class Settings:
     compare_populations: bool = True
     compare_ancestry: bool = True
     compare_haplogroups: bool = True
+    assume_assembly: str | None = None
+    auto_download_chain: bool = True
+    liftover_chain: Path = HG38_TO_HG19_CHAIN
     population_packs: tuple[str, ...] = DEFAULT_POPULATION_PACKS
     extra_pops: dict[str, tuple[str, ...]] = field(default_factory=dict)
     extra_caste_groups: dict[str, tuple[str, ...]] = field(default_factory=dict)
