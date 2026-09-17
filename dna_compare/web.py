@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import cgi
 import io
 import json
+from email.parser import BytesParser
+from email.policy import HTTP
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -18,6 +19,57 @@ MIME = {
     ".js": "application/javascript; charset=utf-8",
     ".txt": "text/plain; charset=utf-8",
 }
+
+
+class FormPart:
+    def __init__(self, value: bytes, filename: str | None = None) -> None:
+        self.value = value
+        self.filename = filename
+        self.file = io.BytesIO(value)
+
+
+class MultipartForm:
+    """cgi.FieldStorage stand-in; cgi was removed from the stdlib in Python 3.13."""
+
+    def __init__(self, parts: dict[str, FormPart]) -> None:
+        self._parts = parts
+
+    def __contains__(self, name: str) -> bool:
+        return name in self._parts
+
+    def __getitem__(self, name: str) -> FormPart:
+        return self._parts[name]
+
+    def getfirst(self, name: str, default: str | None = None) -> str | None:
+        part = self._parts.get(name)
+        if part is None:
+            return default
+        return part.value.decode("utf-8", errors="replace")
+
+
+def parse_multipart(headers, body: bytes) -> MultipartForm:
+    content_type = headers.get("Content-Type") or ""
+    envelope = b"Content-Type: " + content_type.encode("ascii", "surrogateescape") + b"\r\n\r\n" + body
+    msg = BytesParser(policy=HTTP).parsebytes(envelope)
+    parts: dict[str, FormPart] = {}
+    if not msg.is_multipart():
+        return MultipartForm(parts)
+    for part in msg.iter_parts():
+        if part.get_content_disposition() != "form-data":
+            continue
+        name = part.get_param("name", header="content-disposition")
+        if isinstance(name, tuple):
+            name = name[-1]
+        if not name:
+            continue
+        payload = part.get_payload(decode=True)
+        if payload is None:
+            payload = b""
+        elif isinstance(payload, str):
+            payload = payload.encode("utf-8")
+        filename = part.get_filename()
+        parts[str(name)] = FormPart(payload, filename)
+    return MultipartForm(parts)
 
 
 def _truthy(value: str | None, default: bool = True) -> bool:
@@ -90,15 +142,7 @@ class AnalyzeHandler(BaseHTTPRequestHandler):
             query = parse_qs(parsed.query)
             ctype = self.headers.get("Content-Type") or ""
             if ctype.lower().startswith("multipart/form-data"):
-                form = cgi.FieldStorage(
-                    fp=io.BytesIO(body),
-                    headers=self.headers,
-                    environ={
-                        "REQUEST_METHOD": "POST",
-                        "CONTENT_TYPE": ctype,
-                        "CONTENT_LENGTH": str(length),
-                    },
-                )
+                form = parse_multipart(self.headers, body)
                 flags = {
                     "compare_hominin_flag": _truthy(form.getfirst("hominin", "true")),
                     "compare_caste_flag": _truthy(form.getfirst("caste", "true")),

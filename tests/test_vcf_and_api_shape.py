@@ -86,6 +86,29 @@ class VcfAndApiTests(unittest.TestCase):
         self.assertIn("Parayar", joined)
         self.assertNotIn("includes all", joined.lower())
 
+    def test_multipart_form_parses_text_and_file_fields(self):
+        from email.message import EmailMessage
+
+        from dna_compare.web import parse_multipart
+
+        body = (
+            b"--xyz\r\n"
+            b'Content-Disposition: form-data; name="sample"\r\n\r\n'
+            b"demo.snps.vcf\r\n"
+            b"--xyz\r\n"
+            b'Content-Disposition: form-data; name="vcf"; filename="kit.vcf"\r\n'
+            b"Content-Type: text/plain\r\n\r\n"
+            b"##fileformat=VCFv4.2\n\r\n"
+            b"--xyz--\r\n"
+        )
+        headers = EmailMessage()
+        headers["Content-Type"] = "multipart/form-data; boundary=xyz"
+        form = parse_multipart(headers, body)
+        self.assertEqual(form.getfirst("sample"), "demo.snps.vcf")
+        self.assertTrue("vcf" in form)
+        self.assertEqual(form["vcf"].filename, "kit.vcf")
+        self.assertEqual(form["vcf"].file.read(), b"##fileformat=VCFv4.2\n")
+
     def test_bootstrap_is_vendored_for_offline_ui(self):
         from dna_compare.report import STATIC_DIR, render_report_html
         from dna_compare.web import _static_file
