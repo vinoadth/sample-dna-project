@@ -214,6 +214,37 @@
     );
   }
 
+  function ancestry5Card(block) {
+    if (!block || !block.available) {
+      return "";
+    }
+    const rows = (block.estimates || [])
+      .map(function (row) {
+        return (
+          "<tr><td>" +
+          escapeHtml(row.population || "") +
+          '</td><td class="num">' +
+          (row.percent == null ? "—" : Number(row.percent).toFixed(1) + "%") +
+          '</td><td class="num">' +
+          Number(row.n_snps || 0).toLocaleString() +
+          '</td><td class="num">' +
+          (row.mean_ibs == null ? "—" : Number(row.mean_ibs).toFixed(3)) +
+          "</td></tr>"
+        );
+      })
+      .join("");
+    return card(
+      "Deep ancestry (qpAdm-style 5-source)",
+      '<p class="small text-secondary mb-2">Same overlapping HO SNPs as the 3-source bars, plus Anatolia_N (Turkey_N) and East_Asian (Dai). A second model that sums to 100% — not a caste call.</p>' +
+        '<div class="table-responsive mb-2"><table class="table table-sm table-striped table-hover align-middle hg-table"><thead><tr>' +
+        "<th>Source</th><th>Percentage</th><th>Overlapping SNPs</th><th>Mean IBS</th>" +
+        "</tr></thead><tbody>" +
+        rows +
+        "</tbody></table></div>" +
+        notesList(block.notes)
+    );
+  }
+
   function communityRefCard(block) {
     if (!block || block.hidden) {
       return "";
@@ -626,6 +657,7 @@
         barRows((payload.ancestry && payload.ancestry.estimates) || [], "ancestry") +
           notesList(payload.ancestry && payload.ancestry.notes)
       ) +
+      ancestry5Card(payload.ancestry_5 || {}) +
       communityRefCard(payload.community_ref || {}) +
       relatednessCard(payload.relatedness || {}) +
       haploCard(payload.haplogroups || {}) +

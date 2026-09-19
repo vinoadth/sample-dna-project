@@ -261,6 +261,7 @@ class AnalysisResult:
     populations: ComparisonBlock
     ancestry: ComparisonBlock
     haplogroups: HaplogroupResult
+    ancestry_5: ComparisonBlock | None = None
     community_ref: ComparisonBlock | None = None
     relatedness: RelatednessResult | None = None
     errors: list[str] = field(default_factory=list)
@@ -278,6 +279,9 @@ class AnalysisResult:
             "caste": self.caste.to_dict(),
             "populations": self.populations.to_dict(),
             "ancestry": self.ancestry.to_dict(),
+            "ancestry_5": (
+                self.ancestry_5 or ComparisonBlock(kind="ancestry_5", available=False)
+            ).to_dict(),
             "haplogroups": self.haplogroups.to_dict(),
             "community_ref": (
                 self.community_ref or ComparisonBlock(kind="community_ref", available=False)

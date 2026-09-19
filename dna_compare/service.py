@@ -5,6 +5,7 @@ from typing import BinaryIO, TextIO
 
 from dna_compare.comparisons import (
     compare_ancestry,
+    compare_ancestry_5source,
     compare_caste,
     compare_haplogroups,
     compare_hominin,
@@ -62,6 +63,7 @@ class AnalysisService:
         source_name = filename or (Path(source).name if isinstance(source, (str, Path)) else "upload.vcf")
         empty_pops = ComparisonBlock(kind="populations", available=False)
         empty_ancestry = ComparisonBlock(kind="ancestry", available=False)
+        empty_ancestry_5 = ComparisonBlock(kind="ancestry_5", available=False)
         try:
             summary, index = parse_vcf(source, preview_limit=self.settings.variant_preview_limit)
         except Exception as exc:  # noqa: BLE001
@@ -73,6 +75,7 @@ class AnalysisService:
                 caste=ComparisonBlock(kind="caste", available=False),
                 populations=empty_pops,
                 ancestry=empty_ancestry,
+                ancestry_5=empty_ancestry_5,
                 haplogroups=HaplogroupResult(available=False, notes=[str(exc)]),
                 community_ref=ComparisonBlock(kind="community_ref", available=False, notes=[str(exc)]),
                 relatedness=RelatednessResult(available=False, notes=[str(exc)]),
@@ -104,6 +107,11 @@ class AnalysisService:
             if do_ancestry
             else ComparisonBlock(kind="ancestry", available=False, notes=["Ancestry comparison disabled."])
         )
+        ancestry_5 = (
+            compare_ancestry_5source(index, panel=panel, settings=self.settings)
+            if do_ancestry
+            else ComparisonBlock(kind="ancestry_5", available=False, notes=["Ancestry comparison disabled."])
+        )
         haplogroups = (
             compare_haplogroups(index, settings=self.settings)
             if do_haplo
@@ -129,6 +137,7 @@ class AnalysisService:
             caste.notes = [note] + list(caste.notes)
             populations.notes = [note] + list(populations.notes)
             ancestry.notes = [note] + list(ancestry.notes)
+            ancestry_5.notes = [note] + list(ancestry_5.notes)
             haplogroups.notes = [note] + list(haplogroups.notes)
             relatedness.notes = [note] + list(relatedness.notes)
             community_ref.notes = [note] + list(community_ref.notes)
@@ -140,6 +149,7 @@ class AnalysisService:
             caste=caste,
             populations=populations,
             ancestry=ancestry,
+            ancestry_5=ancestry_5,
             haplogroups=haplogroups,
             community_ref=community_ref,
             relatedness=relatedness,

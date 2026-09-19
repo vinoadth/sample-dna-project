@@ -258,6 +258,25 @@ ANCESTRY_AADR_POPS: dict[str, tuple[str, ...]] = {
     "AASI_Onge": ("ONG",),
 }
 
+# 5-source: same three plus Anatolian farmer and East Asian. Han/French stay off the right set.
+ANCESTRY_5_AADR_POPS: dict[str, tuple[str, ...]] = {
+    "AASI_Onge": ("ONG",),
+    "Indus_Periphery": ("Iran_ShahriSokhta_BA1-1", "Iran_ShahriSokhta_BA2-2"),
+    "Steppe_MLBA": ("Russia_Chelyabinsk_MLBA_Sintashta",),
+    "Anatolia_N": ("Turkey_N",),
+    "East_Asian": ("Dai",),
+}
+
+ANCESTRY_5_RIGHT_POPS: tuple[str, ...] = (
+    "Mbuti",
+    "Yoruba",
+    "Ju_hoan_North",
+    "Mandenka",
+    "Papuan",
+    "Karitiana",
+    "Ulchi",
+)
+
 DEFAULT_POPULATION_PACKS = ("greek", "chinese", "persian", "caste")
 
 MAX_SAMPLES_PER_POP = 24
@@ -303,6 +322,7 @@ class Settings:
     extra_pops: dict[str, tuple[str, ...]] = field(default_factory=dict)
     extra_caste_groups: dict[str, tuple[str, ...]] = field(default_factory=dict)
     ancestry_right_pops: tuple[str, ...] = ANCESTRY_RIGHT_POPS
+    ancestry_5_right_pops: tuple[str, ...] = ANCESTRY_5_RIGHT_POPS
 
     def caste_groups(self) -> dict[str, tuple[str, ...]]:
         merged = dict(CASTE_AADR_POPS)
@@ -311,6 +331,9 @@ class Settings:
 
     def ancestry_groups(self) -> dict[str, tuple[str, ...]]:
         return dict(ANCESTRY_AADR_POPS)
+
+    def ancestry_5_groups(self) -> dict[str, tuple[str, ...]]:
+        return dict(ANCESTRY_5_AADR_POPS)
 
     def selected_population_groups(self) -> dict[str, tuple[str, ...]]:
         groups: dict[str, tuple[str, ...]] = {}

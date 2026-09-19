@@ -190,7 +190,7 @@ def _print_human(payload: dict) -> None:
                     f"  {row['chrom']}:{row['pos']}  {row['rsid']}  "
                     f"{row['ref']}>{row['alt']}  GT={row['genotype']}"
                 )
-    for kind in ("hominin", "ancestry", "community_ref", "populations", "caste"):
+    for kind in ("hominin", "ancestry", "ancestry_5", "community_ref", "populations", "caste"):
         block = payload.get(kind) or {}
         if block.get("hidden"):
             continue

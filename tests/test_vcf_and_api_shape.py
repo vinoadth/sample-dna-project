@@ -50,6 +50,9 @@ class VcfAndApiTests(unittest.TestCase):
         self.assertEqual(payload["caste"]["kind"], "caste")
         self.assertEqual(payload["populations"]["kind"], "populations")
         self.assertEqual(payload["ancestry"]["kind"], "ancestry")
+        self.assertIn("ancestry_5", payload)
+        self.assertEqual(payload["ancestry_5"]["kind"], "ancestry_5")
+        self.assertFalse(payload["ancestry_5"]["available"])
         self.assertIn("community_ref", payload)
         self.assertTrue(payload["community_ref"].get("hidden"))
         self.assertIn("haplogroups", payload)
@@ -65,7 +68,13 @@ class VcfAndApiTests(unittest.TestCase):
         self.assertIn("second VCF", payload["relatedness"]["notes"][0])
 
     def test_ancestry_aadr_labels_exist(self):
-        from dna_compare.config import ANCESTRY_AADR_POPS, ANCESTRY_RIGHT_POPS, default_settings
+        from dna_compare.config import (
+            ANCESTRY_5_AADR_POPS,
+            ANCESTRY_5_RIGHT_POPS,
+            ANCESTRY_AADR_POPS,
+            ANCESTRY_RIGHT_POPS,
+            default_settings,
+        )
         from dna_compare.eigenstrat import AadrPanel
 
         panel = AadrPanel(default_settings())
@@ -76,6 +85,12 @@ class VcfAndApiTests(unittest.TestCase):
             self.assertTrue(any(pop in present for pop in pops), f"{label} missing {pops}")
         for pop in ANCESTRY_RIGHT_POPS:
             self.assertIn(pop, present, f"outgroup {pop} missing")
+        for label, pops in ANCESTRY_5_AADR_POPS.items():
+            self.assertTrue(any(pop in present for pop in pops), f"5-source {label} missing {pops}")
+        for pop in ANCESTRY_5_RIGHT_POPS:
+            self.assertIn(pop, present, f"5-source outgroup {pop} missing")
+        self.assertNotIn("Han", ANCESTRY_5_RIGHT_POPS)
+        self.assertNotIn("French", ANCESTRY_5_RIGHT_POPS)
 
     def test_caste_alias_notes_include_pillai_and_missing_panels(self):
         notes = caste_alias_notes()
@@ -137,6 +152,8 @@ class VcfAndApiTests(unittest.TestCase):
         js = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
         self.assertIn("communityRefCard", js)
         self.assertIn("relatednessTables", js)
+        self.assertIn("ancestry5Card", js)
+        self.assertIn("qpAdm-style 5-source", js)
         self.assertIn("if (!block || !block.other_filename)", js)
         self.assertIn("hgPctClass", js)
         self.assertIn("table-warning", js)

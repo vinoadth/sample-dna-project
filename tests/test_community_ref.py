@@ -76,10 +76,22 @@ class CommunityRefTests(unittest.TestCase):
             estimates=[
                 PopulationEstimate(population="Punjabi", percent=40.0, n_snps=100),
                 PopulationEstimate(population="Gujarati", percent=30.0, n_snps=100),
+                PopulationEstimate(population="Bengali", percent=15.0, n_snps=100),
                 PopulationEstimate(population="Tamil", percent=5.0, n_snps=100),
             ],
         )
         self.assertFalse(tamil_reference_applicable(north, "kit.vcf"))
+        third = ComparisonBlock(
+            kind="caste",
+            available=True,
+            estimates=[
+                PopulationEstimate(population="Bengali", percent=22.0, n_snps=100),
+                PopulationEstimate(population="Telugu", percent=20.0, n_snps=100),
+                PopulationEstimate(population="Tamil", percent=18.0, n_snps=100),
+                PopulationEstimate(population="Punjabi", percent=10.0, n_snps=100),
+            ],
+        )
+        self.assertTrue(tamil_reference_applicable(third, "kit.vcf"))
         hidden = score_community_reference(
             ComparisonBlock(kind="ancestry", available=True, estimates=[]),
             HaplogroupResult(available=False),

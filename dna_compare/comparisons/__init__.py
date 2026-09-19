@@ -1,4 +1,4 @@
-from dna_compare.comparisons.ancestry import compare_ancestry
+from dna_compare.comparisons.ancestry import compare_ancestry, compare_ancestry_5source
 from dna_compare.comparisons.caste import compare_caste
 from dna_compare.comparisons.community_ref import score_community_reference
 from dna_compare.comparisons.haplogroups import compare_haplogroups
@@ -8,6 +8,7 @@ from dna_compare.comparisons.relatedness import compare_relatedness
 
 __all__ = [
     "compare_ancestry",
+    "compare_ancestry_5source",
     "compare_caste",
     "compare_haplogroups",
     "compare_hominin",

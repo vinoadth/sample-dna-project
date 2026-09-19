@@ -28,6 +28,24 @@ class QpAdmTests(unittest.TestCase):
         self.assertTrue(np.allclose(normed, truth, atol=1e-6), normed)
         self.assertLess(rss, 1e-12)
 
+    def test_recovers_five_source_mixture(self):
+        n = 5000
+        grid = np.linspace(0.05, 0.95, n)
+        sources = [
+            grid,
+            np.clip(grid[::-1] * 0.7 + 0.1, 0, 1),
+            np.clip((grid * 0.4 + 0.3), 0, 1),
+            np.clip(np.sin(grid * 3) * 0.4 + 0.4, 0, 1),
+            np.clip(np.cos(grid * 5) * 0.35 + 0.45, 0, 1),
+        ]
+        rights = [np.clip((grid + offset) % 1.0, 0, 1) for offset in (0.02, 0.11, 0.23, 0.37, 0.51, 0.68, 0.81)]
+        truth = np.array([0.40, 0.30, 0.15, 0.10, 0.05])
+        target = sum(w * src for w, src in zip(truth, sources))
+        raw, normed, rss = qpadm_weights(target, sources, rights)
+        self.assertTrue(np.allclose(raw, truth, atol=1e-6), raw)
+        self.assertTrue(np.allclose(normed, truth, atol=1e-6), normed)
+        self.assertLess(rss, 1e-12)
+
 
 if __name__ == "__main__":
     unittest.main()

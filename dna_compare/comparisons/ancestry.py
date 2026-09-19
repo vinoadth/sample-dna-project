@@ -13,6 +13,13 @@ ANCESTRY_NOTES = [
     "Bars are one model that sums to 100%. Not a date, not qpAdm from ADMIXTOOLS2, and not every SNP in the VCF.",
 ]
 
+ANCESTRY_5_NOTES = [
+    "qpAdm-style 5-source mix: the 3 South Asian sources plus Anatolia_N (Turkey_N / Barcin-related farmer) and East_Asian (Dai).",
+    "Han and French are left out of this model's outgroups so they do not sit on both sides of the f4 equations.",
+    "For most Tamil / South Indian kits East_Asian and Anatolia_N should be small. A large leftover there means the 3-source bars are absorbing something else.",
+    "A second model that also sums to 100%. Not ADMIXTOOLS2, not a date, and not every SNP in the VCF.",
+]
+
 
 def _load_freq(panel, pops: tuple[str, ...], notes: list[str], label: str) -> np.ndarray | None:
     try:
@@ -45,40 +52,42 @@ def _aligned_columns(
     return np.asarray(target, dtype=float), [np.asarray(col, dtype=float) for col in columns]
 
 
-def compare_ancestry(
+def _fit_ancestry_model(
     query_index: dict[tuple[str, int], dict],
     *,
     panel,
-    settings: Settings,
+    groups: dict[str, tuple[str, ...]],
+    right_pops: tuple[str, ...],
+    kind: str,
+    notes: list[str],
 ) -> ComparisonBlock:
-    notes = list(ANCESTRY_NOTES)
     if panel is None or not panel.available:
         return ComparisonBlock(
-            kind="ancestry",
+            kind=kind,
             available=False,
             notes=["AADR HO panel not found under data/references/aadr/."],
         )
 
     source_freqs: list[np.ndarray] = []
     kept_labels: list[str] = []
-    for label, pops in settings.ancestry_groups().items():
+    for label, pops in groups.items():
         freq = _load_freq(panel, pops, notes, label)
         if freq is not None:
             source_freqs.append(freq)
             kept_labels.append(label)
     if len(kept_labels) < 2:
-        return ComparisonBlock(kind="ancestry", available=False, notes=notes)
+        return ComparisonBlock(kind=kind, available=False, notes=notes)
 
     right_labels: list[str] = []
     right_freqs: list[np.ndarray] = []
-    for pop in settings.ancestry_right_pops:
+    for pop in right_pops:
         freq = _load_freq(panel, (pop,), notes, pop)
         if freq is not None:
             right_freqs.append(freq)
             right_labels.append(pop)
     if len(right_freqs) < 3:
         return ComparisonBlock(
-            kind="ancestry",
+            kind=kind,
             available=False,
             notes=notes + ["Need at least three outgroup populations for qpAdm-style f4."],
         )
@@ -88,7 +97,7 @@ def compare_ancestry(
     n_used = int(target.size)
     if n_used < 50:
         return ComparisonBlock(
-            kind="ancestry",
+            kind=kind,
             available=False,
             notes=notes + [f"Only {n_used} overlapping SNPs; need a denser SNP VCF."],
         )
@@ -101,7 +110,7 @@ def compare_ancestry(
         notes.append(
             "Raw qpAdm-style weights included a negative component "
             f"({', '.join(f'{lab}={val:.3f}' for lab, val in zip(kept_labels, raw))}); "
-            "bars are clipped to non-negative and rescaled to 100%."
+            "percentages are clipped to non-negative and rescaled to 100%."
         )
 
     estimates = []
@@ -116,4 +125,36 @@ def compare_ancestry(
             )
         )
     estimates.sort(key=lambda item: item.percent, reverse=True)
-    return ComparisonBlock(kind="ancestry", available=True, estimates=estimates, notes=notes)
+    return ComparisonBlock(kind=kind, available=True, estimates=estimates, notes=notes)
+
+
+def compare_ancestry(
+    query_index: dict[tuple[str, int], dict],
+    *,
+    panel,
+    settings: Settings,
+) -> ComparisonBlock:
+    return _fit_ancestry_model(
+        query_index,
+        panel=panel,
+        groups=settings.ancestry_groups(),
+        right_pops=settings.ancestry_right_pops,
+        kind="ancestry",
+        notes=list(ANCESTRY_NOTES),
+    )
+
+
+def compare_ancestry_5source(
+    query_index: dict[tuple[str, int], dict],
+    *,
+    panel,
+    settings: Settings,
+) -> ComparisonBlock:
+    return _fit_ancestry_model(
+        query_index,
+        panel=panel,
+        groups=settings.ancestry_5_groups(),
+        right_pops=settings.ancestry_5_right_pops,
+        kind="ancestry_5",
+        notes=list(ANCESTRY_5_NOTES),
+    )

@@ -6,7 +6,6 @@ from pathlib import Path
 from dna_compare.config import Settings, TAMIL_COMMUNITY_REF
 from dna_compare.models import CommunityRefMatch, ComparisonBlock, HaplogroupResult
 
-TAMIL_HO_LABELS = {"Tamil", "Vellalar", "Irula"}
 FILENAME_HINTS = (
     "tamil",
     "vellalar",
@@ -157,18 +156,15 @@ def tamil_reference_applicable(
     caste: ComparisonBlock | None,
     filename: str | None = None,
 ) -> bool:
-    """Show the Tamil range table only for Tamil-looking files."""
+    """Show the Tamil range table when Tamil is in the top 3 community weights."""
     name = (filename or "").lower()
     if any(hint in name for hint in FILENAME_HINTS):
         return True
     if caste is None or not caste.available or not caste.estimates:
         return False
     ranked = sorted(caste.estimates, key=_estimate_percent, reverse=True)
-    top = {_estimate_label(est) for est in ranked[:2]}
-    if top & TAMIL_HO_LABELS:
-        return True
-    tamil_share = sum(_estimate_percent(est) for est in ranked if _estimate_label(est) in TAMIL_HO_LABELS)
-    return tamil_share >= 25.0
+    top3 = {_estimate_label(est) for est in ranked[:3]}
+    return "Tamil" in top3
 
 
 def score_community_reference(
@@ -184,7 +180,7 @@ def score_community_reference(
             kind="community_ref",
             available=False,
             hidden=True,
-            notes=["Tamil community ranges hidden: this file does not look Tamil-related (filename or top HO labels)."],
+            notes=["Tamil community ranges hidden: Tamil is not in the top 3 community weights."],
         )
     path = settings.tamil_community_ref if settings is not None else TAMIL_COMMUNITY_REF
     refs = load_tamil_community_reference(path)
