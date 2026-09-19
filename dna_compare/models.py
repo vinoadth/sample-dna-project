@@ -98,6 +98,29 @@ CasteEstimate = PopulationEstimate
 
 
 @dataclass
+class CommunityRefMatch:
+    population: str
+    percent: float
+    n_snps: int = 0
+    aasi_in_range: bool = False
+    steppe_in_range: bool = False
+    aasi_score: float | None = None
+    steppe_score: float | None = None
+    y_score: float | None = None
+    sample_aasi: float | None = None
+    sample_steppe: float | None = None
+    ref_aasi: str = ""
+    ref_steppe: str = ""
+    ref_y: str = ""
+    sample_y: str | None = None
+    y_note: str = ""
+    note: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
 class HaplogroupMarkerCall:
     haplogroup: str
     marker: str
@@ -195,6 +218,10 @@ class RelatednessResult:
     ibs0: int = 0
     ibs1: int = 0
     ibs2: int = 0
+    ibs0_pct: float | None = None
+    ibs1_pct: float | None = None
+    ibs2_pct: float | None = None
+    shared_pct: float | None = None
     relationship: str | None = None
     notes: list[str] = field(default_factory=list)
 
@@ -209,6 +236,7 @@ class ComparisonBlock:
     estimates: list[Any] = field(default_factory=list)
     missing_files: list[ReferenceStatus] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    hidden: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -217,6 +245,7 @@ class ComparisonBlock:
             "estimates": [item.to_dict() for item in self.estimates],
             "missing_files": [item.to_dict() for item in self.missing_files],
             "notes": self.notes,
+            "hidden": self.hidden,
         }
 
 
@@ -232,6 +261,7 @@ class AnalysisResult:
     populations: ComparisonBlock
     ancestry: ComparisonBlock
     haplogroups: HaplogroupResult
+    community_ref: ComparisonBlock | None = None
     relatedness: RelatednessResult | None = None
     errors: list[str] = field(default_factory=list)
 
@@ -249,6 +279,9 @@ class AnalysisResult:
             "populations": self.populations.to_dict(),
             "ancestry": self.ancestry.to_dict(),
             "haplogroups": self.haplogroups.to_dict(),
+            "community_ref": (
+                self.community_ref or ComparisonBlock(kind="community_ref", available=False)
+            ).to_dict(),
             "relatedness": relatedness.to_dict(),
             "errors": self.errors,
         }

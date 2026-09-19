@@ -8,6 +8,7 @@ DATA_DIR = PROJECT_ROOT / "data"
 REFERENCE_DIR = DATA_DIR / "references"
 HOMININ_DIR = REFERENCE_DIR / "hominin"
 CASTE_DIR = REFERENCE_DIR / "caste"
+TAMIL_COMMUNITY_REF = CASTE_DIR / "tamil_community_reference.tsv"
 CACHE_DIR = REFERENCE_DIR / "cache"
 SAMPLE_DIR = DATA_DIR / "samples"
 UPLOAD_DIR = DATA_DIR / "uploads"
@@ -286,6 +287,7 @@ class Settings:
     aadr_anno: Path = AADR_ANNO
     hominin_dir: Path = HOMININ_DIR
     caste_dir: Path = CASTE_DIR
+    tamil_community_ref: Path = TAMIL_COMMUNITY_REF
     cache_dir: Path = CACHE_DIR
     variant_preview_limit: int = VARIANT_PREVIEW_LIMIT
     max_samples_per_pop: int = MAX_SAMPLES_PER_POP

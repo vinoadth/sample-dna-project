@@ -305,6 +305,7 @@ def compare_relatedness(
         )
     elif reliability == "high":
         notes.append(f"{n} well-spaced autosomal SNPs is enough for a stable 3rd-degree call on real array data.")
+    kinship_r = None if kinship is None else round(float(kinship), 4)
     return RelatednessResult(
         available=True,
         other_filename=other_filename,
@@ -319,10 +320,14 @@ def compare_relatedness(
         het_rate_other=het_rate_b,
         reliability=reliability,
         mean_ibs=round(mean_ibs, 4),
-        kinship=None if kinship is None else round(float(kinship), 4),
+        kinship=kinship_r,
         ibs0=ibs0,
         ibs1=ibs1,
         ibs2=ibs2,
+        ibs0_pct=round(100.0 * ibs0 / n, 2),
+        ibs1_pct=round(100.0 * ibs1 / n, 2),
+        ibs2_pct=round(100.0 * ibs2 / n, 2),
+        shared_pct=None if kinship_r is None else round(200.0 * kinship_r, 2),
         relationship=relationship,
         notes=notes,
     )

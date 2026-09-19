@@ -214,13 +214,69 @@
     );
   }
 
+  function communityRefCard(block) {
+    if (!block || block.hidden) {
+      return "";
+    }
+    if (!block.available) {
+      return card(
+        "Tamil community reference ranges",
+        '<p class="text-secondary mb-0">Need ancestry results and data/references/caste/tamil_community_reference.tsv.</p>' +
+          notesList(block && block.notes)
+      );
+    }
+    const rows = block.estimates || [];
+    const body = rows
+      .map(function (row) {
+        const cls = row.steppe_in_range && row.aasi_in_range
+          ? "table-success"
+          : row.steppe_in_range
+            ? "table-info"
+            : row.percent >= 50
+              ? "table-warning"
+              : "";
+        return (
+          "<tr class=\"" +
+          cls +
+          "\"><td>" +
+          escapeHtml(row.population) +
+          '</td><td class="num">' +
+          escapeHtml(row.ref_aasi || "—") +
+          '</td><td class="num">' +
+          escapeHtml(row.ref_steppe || "—") +
+          '</td><td class="num">' +
+          (row.sample_aasi == null ? "—" : Number(row.sample_aasi).toFixed(1) + "%") +
+          '</td><td class="num">' +
+          (row.sample_steppe == null ? "—" : Number(row.sample_steppe).toFixed(1) + "%") +
+          "</td><td>" +
+          escapeHtml(row.ref_y || "—") +
+          '</td><td class="num">' +
+          Number(row.percent).toFixed(0) +
+          "%</td></tr>"
+        );
+      })
+      .join("");
+    return card(
+      "Tamil community reference ranges",
+      '<p class="small text-secondary mb-2">Fit = how close this file\'s AASI_Onge and Steppe_MLBA are to the stored published ranges. Not a caste call. Row color: both ranges match / Steppe matches / fit ≥ 50%.</p>' +
+        '<div class="table-responsive"><table class="table table-sm table-striped table-hover align-middle hg-table"><thead><tr>' +
+        "<th>Community</th><th>Ref AASI/ASI</th><th>Ref Steppe</th><th>This AASI</th><th>This Steppe</th><th>Ref Y (community %)</th><th>Fit</th>" +
+        "</tr></thead><tbody>" +
+        body +
+        "</tbody></table></div>" +
+        notesList(block.notes)
+    );
+  }
+
   function relatednessCard(block) {
     if (!block || !block.available) {
-      const notes = notesList(block && block.notes);
+      if (!block || !block.other_filename) {
+        return "";
+      }
       return card(
-        "Relatedness (optional second VCF)",
-        '<p class="text-secondary mb-0">Upload a parent, relative, or any other SNP VCF to estimate how close the two files are.</p>' +
-          notes
+        "Relatedness vs second VCF",
+        '<p class="text-secondary mb-0">The second VCF was attached, but relatedness could not be estimated.</p>' +
+          notesList(block.notes)
       );
     }
     const kinship = block.kinship == null ? "—" : Number(block.kinship).toFixed(3);
@@ -266,8 +322,90 @@
         "low-quality sites dropped"
       ) +
       "</div>" +
+      relatednessTables(block) +
       notesList(block.notes);
     return card("Relatedness vs second VCF", body);
+  }
+
+  function relatednessBand(kinship) {
+    if (kinship == null) return "";
+    const k = Number(kinship);
+    if (k >= 0.354) return "twin";
+    if (k >= 0.177) return "first";
+    if (k >= 0.088) return "second";
+    if (k >= 0.044) return "cousin";
+    if (k >= 0.022) return "distant";
+    return "unrelated";
+  }
+
+  function relatednessTables(block) {
+    const n = Number(block.n_snps || 0);
+    const fmt = function (value) {
+      if (value == null || Number.isNaN(Number(value))) return "—";
+      return Number(value).toFixed(1) + "%";
+    };
+    const rows = [
+      ["IBS0 (opposite homozygotes)", block.ibs0, block.ibs0_pct],
+      ["IBS1 (one allele shared)", block.ibs1, block.ibs1_pct],
+      ["IBS2 (both alleles shared)", block.ibs2, block.ibs2_pct],
+      ["Mean IBS (allele sharing)", "—", block.mean_ibs == null ? null : 100 * Number(block.mean_ibs)],
+      ["Estimated DNA shared (2 × kinship)", "—", block.shared_pct],
+    ];
+    const share = rows
+      .map(function (row) {
+        return (
+          "<tr><td>" +
+          escapeHtml(row[0]) +
+          '</td><td class="num">' +
+          (row[1] === "—" ? "—" : Number(row[1] || 0).toLocaleString()) +
+          '</td><td class="num">' +
+          fmt(row[2]) +
+          "</td></tr>"
+        );
+      })
+      .join("");
+    const band = relatednessBand(block.kinship);
+    const refs = [
+      ["twin", "Same person / identical twin", "≥ 0.35", "~100%", "~0%"],
+      ["first", "Parent–child or full sibling", "~0.25", "~50%", "≈0% parent–child"],
+      ["second", "Second-degree (half-sib, uncle, grandparent)", "~0.13", "~25%", "low"],
+      ["cousin", "Third-degree (first cousin)", "~0.06", "~12.5%", "moderate"],
+      ["distant", "Fourth-degree / distant", "~0.03", "~6%", "higher"],
+      ["unrelated", "Unrelated or very distant", "~0", "~0%", "highest"],
+    ];
+    const refBody = refs
+      .map(function (row) {
+        const active = row[0] === band;
+        return (
+          "<tr" +
+          (active ? ' class="table-info"' : "") +
+          "><td>" +
+          escapeHtml(row[1]) +
+          (active ? ' <span class="badge text-bg-info">this pair</span>' : "") +
+          "</td><td>" +
+          escapeHtml(row[2]) +
+          "</td><td>" +
+          escapeHtml(row[3]) +
+          "</td><td>" +
+          escapeHtml(row[4]) +
+          "</td></tr>"
+        );
+      })
+      .join("");
+    return (
+      '<h3 class="h6 text-secondary mt-3">Sharing on ' +
+      n.toLocaleString() +
+      " overlapping SNPs</h3>" +
+      '<div class="table-responsive mb-3"><table class="table table-sm table-striped align-middle hg-table"><thead><tr>' +
+      "<th>Metric</th><th>Count</th><th>Percentage</th></tr></thead><tbody>" +
+      share +
+      "</tbody></table></div>" +
+      '<h3 class="h6 text-secondary">Typical ranges (KING)</h3>' +
+      '<div class="table-responsive"><table class="table table-sm table-striped align-middle hg-table"><thead><tr>' +
+      "<th>Relationship</th><th>Kinship</th><th>DNA shared</th><th>IBS0</th></tr></thead><tbody>" +
+      refBody +
+      "</tbody></table></div>"
+    );
   }
 
   function haploCard(hg) {
@@ -296,6 +434,28 @@
     body += notesList(hg.notes);
     body += notesList(hg.mt_notes);
     return card(title, body);
+  }
+
+  function hgPctClass(cell) {
+    if (!cell || cell.percent === null || cell.percent === undefined) return "";
+    const pct = Number(cell.percent);
+    if (!(pct > 0)) return "";
+    if (pct <= 25) return "table-warning";
+    if (pct <= 50) return "table-info";
+    if (pct <= 75) return "table-primary";
+    return "table-success";
+  }
+
+  function hgPctLegend() {
+    return (
+      '<p class="small text-secondary mb-2">' +
+      "Highlight is the AADR share in that community: " +
+      '<span class="badge text-bg-warning">≤25%</span> ' +
+      '<span class="badge text-bg-info">≤50%</span> ' +
+      '<span class="badge text-bg-primary">≤75%</span> ' +
+      '<span class="badge text-bg-success">&gt;75%</span>' +
+      "</p>"
+    );
   }
 
   function haploTable(block, kind) {
@@ -334,7 +494,15 @@
           "</td>" +
           groups
             .map(function (name) {
-              return '<td class="num">' + fmtHgCell((row.groups || {})[name]) + "</td>";
+              const cell = (row.groups || {})[name];
+              const extra = hgPctClass(cell);
+              return (
+                '<td class="num' +
+                (extra ? " " + extra : "") +
+                '">' +
+                fmtHgCell(cell) +
+                "</td>"
+              );
             })
             .join("") +
           "</tr>"
@@ -343,6 +511,7 @@
       .join("");
     return (
       best +
+      hgPctLegend() +
       '<div class="table-responsive"><table class="table table-sm table-striped table-hover align-middle hg-table"><thead><tr>' +
       head +
       "</tr></thead><tbody>" +
@@ -457,6 +626,7 @@
         barRows((payload.ancestry && payload.ancestry.estimates) || [], "ancestry") +
           notesList(payload.ancestry && payload.ancestry.notes)
       ) +
+      communityRefCard(payload.community_ref || {}) +
       relatednessCard(payload.relatedness || {}) +
       haploCard(payload.haplogroups || {}) +
       '<div class="row g-3">' +

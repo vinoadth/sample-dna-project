@@ -190,8 +190,10 @@ def _print_human(payload: dict) -> None:
                     f"  {row['chrom']}:{row['pos']}  {row['rsid']}  "
                     f"{row['ref']}>{row['alt']}  GT={row['genotype']}"
                 )
-    for kind in ("hominin", "ancestry", "populations", "caste"):
-        block = payload[kind]
+    for kind in ("hominin", "ancestry", "community_ref", "populations", "caste"):
+        block = payload.get(kind) or {}
+        if block.get("hidden"):
+            continue
         print(f"\n{kind} comparison  available={block['available']}")
         for note in block.get("notes") or []:
             print(f"  note: {note}")
@@ -214,6 +216,13 @@ def _print_human(payload: dict) -> None:
         f"call={related.get('relationship')}  "
         f"reliability={related.get('reliability')}"
     )
+    if related.get("available"):
+        print(
+            f"  shared={related.get('shared_pct')}%  "
+            f"IBS0={related.get('ibs0_pct')}%  "
+            f"IBS1={related.get('ibs1_pct')}%  "
+            f"IBS2={related.get('ibs2_pct')}%"
+        )
     for note in related.get("notes") or []:
         print(f"  note: {note}")
     haplo = payload.get("haplogroups") or {}

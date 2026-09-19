@@ -50,6 +50,8 @@ class VcfAndApiTests(unittest.TestCase):
         self.assertEqual(payload["caste"]["kind"], "caste")
         self.assertEqual(payload["populations"]["kind"], "populations")
         self.assertEqual(payload["ancestry"]["kind"], "ancestry")
+        self.assertIn("community_ref", payload)
+        self.assertTrue(payload["community_ref"].get("hidden"))
         self.assertIn("haplogroups", payload)
         self.assertIn("markers", payload["haplogroups"])
         self.assertIn("rows", payload["haplogroups"])
@@ -132,6 +134,15 @@ class VcfAndApiTests(unittest.TestCase):
         self.assertIn("cerulean", report)
         self.assertIn("navbar", report)
         self.assertIn("card", report)
+        js = (STATIC_DIR / "app.js").read_text(encoding="utf-8")
+        self.assertIn("communityRefCard", js)
+        self.assertIn("relatednessTables", js)
+        self.assertIn("if (!block || !block.other_filename)", js)
+        self.assertIn("hgPctClass", js)
+        self.assertIn("table-warning", js)
+        self.assertIn("table-success", js)
+        self.assertIn("text-bg-warning", js)
+        self.assertNotIn("haploShareTable", js)
 
 
 if __name__ == "__main__":

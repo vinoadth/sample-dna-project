@@ -56,6 +56,9 @@ class RelatednessTests(unittest.TestCase):
         self.assertEqual(result.n_snps, 250)
         self.assertEqual(result.ibs0, 0)
         self.assertAlmostEqual(result.kinship, 0.5, places=3)
+        self.assertAlmostEqual(result.shared_pct, 100.0, places=1)
+        self.assertAlmostEqual(result.ibs0_pct, 0.0, places=1)
+        self.assertGreater(result.ibs2_pct, 50.0)
         self.assertIn("same person", result.relationship)
 
     def test_parent_child_has_no_ibs0_and_first_degree_kinship(self):

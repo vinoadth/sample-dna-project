@@ -10,6 +10,7 @@ from dna_compare.comparisons import (
     compare_hominin,
     compare_populations,
     compare_relatedness,
+    score_community_reference,
 )
 from dna_compare.assembly import assembly_note, detect_assembly
 from dna_compare.config import Settings, default_settings
@@ -73,6 +74,7 @@ class AnalysisService:
                 populations=empty_pops,
                 ancestry=empty_ancestry,
                 haplogroups=HaplogroupResult(available=False, notes=[str(exc)]),
+                community_ref=ComparisonBlock(kind="community_ref", available=False, notes=[str(exc)]),
                 relatedness=RelatednessResult(available=False, notes=[str(exc)]),
                 errors=[f"Failed to parse VCF: {exc}"],
             )
@@ -114,6 +116,13 @@ class AnalysisService:
             other_filename,
             source_name,
         )
+        community_ref = score_community_reference(
+            ancestry if do_ancestry else None,
+            haplogroups if do_haplo else None,
+            caste=caste if do_caste else None,
+            filename=source_name,
+            settings=self.settings,
+        )
         note = assembly_note(summary)
         if note:
             hominin.notes = [note] + list(hominin.notes)
@@ -122,6 +131,7 @@ class AnalysisService:
             ancestry.notes = [note] + list(ancestry.notes)
             haplogroups.notes = [note] + list(haplogroups.notes)
             relatedness.notes = [note] + list(relatedness.notes)
+            community_ref.notes = [note] + list(community_ref.notes)
         return AnalysisResult(
             ok=True,
             source_filename=source_name,
@@ -131,6 +141,7 @@ class AnalysisService:
             populations=populations,
             ancestry=ancestry,
             haplogroups=haplogroups,
+            community_ref=community_ref,
             relatedness=relatedness,
         )
 
